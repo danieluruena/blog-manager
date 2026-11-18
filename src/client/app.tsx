@@ -1,55 +1,55 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react"
 
-import type { HealthResponse } from "@shared/types";
+import type { HealthResponse } from "@shared/types"
 
 type HealthState =
   | { status: "loading" }
   | { status: "ok"; data: HealthResponse }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string }
 
 const navigation = [
   { label: "Panel", active: true },
   { label: "Blogs", active: false },
   { label: "Ajustes", active: false },
-];
+]
 
 const nextSteps = [
   "Configurar D1 y R2 con `npm run bootstrap`.",
   "Crear el esquema de blogs, artículos y usuarios.",
   "Implementar login y sesiones.",
   "Construir el CRUD de blogs y el editor markdown.",
-];
+]
 
 export function App() {
-  const [health, setHealth] = useState<HealthState>({ status: "loading" });
+  const [health, setHealth] = useState<HealthState>({ status: "loading" })
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = new AbortController()
 
     fetch("/api/health", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(`La API respondió con HTTP ${response.status}`);
+          throw new Error(`La API respondió con HTTP ${response.status}`)
         }
 
-        return (await response.json()) as HealthResponse;
+        return (await response.json()) as HealthResponse
       })
       .then((data) => {
-        setHealth({ status: "ok", data });
+        setHealth({ status: "ok", data })
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) {
-          return;
+          return
         }
 
         setHealth({
           status: "error",
           message: error instanceof Error ? error.message : "Error desconocido",
-        });
-      });
+        })
+      })
 
-    return () => controller.abort();
-  }, []);
+    return () => controller.abort()
+  }, [])
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -248,5 +248,5 @@ export function App() {
         </div>
       </div>
     </div>
-  );
+  )
 }

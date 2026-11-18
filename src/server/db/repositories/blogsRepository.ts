@@ -1,53 +1,53 @@
-import { and, asc, desc, eq, getTableColumns, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, ne, sql, type SQL } from "drizzle-orm"
 
-import type { Database } from "../client";
-import { articles, blogs, type Blog, type NewBlog } from "../schema";
+import type { Database } from "../client"
+import { articles, blogs, type Blog, type NewBlog } from "../schema"
 
-type BlogSort = "name" | "updated_at" | "created_at";
+type BlogSort = "name" | "updated_at" | "created_at"
 
 export type ListBlogsFilters = {
-  q?: string;
-  active?: boolean;
-  page?: number;
-  pageSize?: number;
-  sort?: BlogSort;
-};
+  q?: string
+  active?: boolean
+  page?: number
+  pageSize?: number
+  sort?: BlogSort
+}
 
 export type BlogListItem = Blog & {
-  articleCount: number;
-};
+  articleCount: number
+}
 
 export type PaginatedBlogs = {
-  items: BlogListItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-};
+  items: BlogListItem[]
+  total: number
+  page: number
+  pageSize: number
+}
 
 export async function listBlogs(
   db: Database,
   filters: ListBlogsFilters = {},
 ): Promise<PaginatedBlogs> {
-  const page = Math.max(1, filters.page ?? 1);
-  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 20));
-  const conditions: SQL[] = [];
+  const page = Math.max(1, filters.page ?? 1)
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 20))
+  const conditions: SQL[] = []
 
   if (filters.q?.trim()) {
-    const term = `%${filters.q.trim().toLowerCase()}%`;
-    conditions.push(sql`lower(${blogs.name}) like ${term}`);
+    const term = `%${filters.q.trim().toLowerCase()}%`
+    conditions.push(sql`lower(${blogs.name}) like ${term}`)
   }
 
   if (filters.active !== undefined) {
-    conditions.push(eq(blogs.isActive, filters.active));
+    conditions.push(eq(blogs.isActive, filters.active))
   }
 
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const where = conditions.length > 0 ? and(...conditions) : undefined
   const orderBy =
     filters.sort === "name"
       ? asc(blogs.name)
       : filters.sort === "created_at"
         ? desc(blogs.createdAt)
-        : desc(blogs.updatedAt);
+        : desc(blogs.updatedAt)
 
   const [items, countRows] = await Promise.all([
     db
@@ -66,14 +66,14 @@ export async function listBlogs(
       .select({ count: sql<number>`count(*)` })
       .from(blogs)
       .where(where),
-  ]);
+  ])
 
   return {
     items,
     total: countRows[0]?.count ?? 0,
     page,
     pageSize,
-  };
+  }
 }
 
 export async function listBlogsForSidebar(db: Database) {
@@ -85,13 +85,13 @@ export async function listBlogsForSidebar(db: Database) {
       isActive: blogs.isActive,
     })
     .from(blogs)
-    .orderBy(asc(blogs.name));
+    .orderBy(asc(blogs.name))
 }
 
 export async function getBlogById(db: Database, id: string): Promise<Blog | null> {
-  const rows = await db.select().from(blogs).where(eq(blogs.id, id)).limit(1);
+  const rows = await db.select().from(blogs).where(eq(blogs.id, id)).limit(1)
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 export async function getBlogBySlug(
@@ -99,19 +99,19 @@ export async function getBlogBySlug(
   slug: string,
   activeOnly = false,
 ): Promise<Blog | null> {
-  const conditions = [eq(blogs.slug, slug)];
+  const conditions = [eq(blogs.slug, slug)]
 
   if (activeOnly) {
-    conditions.push(eq(blogs.isActive, true));
+    conditions.push(eq(blogs.isActive, true))
   }
 
   const rows = await db
     .select()
     .from(blogs)
     .where(and(...conditions))
-    .limit(1);
+    .limit(1)
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 export async function blogSlugExists(
@@ -119,29 +119,29 @@ export async function blogSlugExists(
   slug: string,
   excludeId?: string,
 ): Promise<boolean> {
-  const conditions = [eq(blogs.slug, slug)];
+  const conditions = [eq(blogs.slug, slug)]
 
   if (excludeId) {
-    conditions.push(ne(blogs.id, excludeId));
+    conditions.push(ne(blogs.id, excludeId))
   }
 
   const rows = await db
     .select({ id: blogs.id })
     .from(blogs)
     .where(and(...conditions))
-    .limit(1);
+    .limit(1)
 
-  return rows.length > 0;
+  return rows.length > 0
 }
 
 export async function createBlog(db: Database, input: NewBlog): Promise<Blog> {
-  const [blog] = await db.insert(blogs).values(input).returning();
+  const [blog] = await db.insert(blogs).values(input).returning()
 
   if (!blog) {
-    throw new Error("No se pudo crear el blog");
+    throw new Error("No se pudo crear el blog")
   }
 
-  return blog;
+  return blog
 }
 
 export async function updateBlog(
@@ -149,22 +149,22 @@ export async function updateBlog(
   id: string,
   input: Partial<Omit<NewBlog, "id" | "createdAt">>,
 ): Promise<Blog | null> {
-  const [blog] = await db.update(blogs).set(input).where(eq(blogs.id, id)).returning();
+  const [blog] = await db.update(blogs).set(input).where(eq(blogs.id, id)).returning()
 
-  return blog ?? null;
+  return blog ?? null
 }
 
 export async function deleteBlog(db: Database, id: string): Promise<boolean> {
-  const rows = await db.delete(blogs).where(eq(blogs.id, id)).returning({ id: blogs.id });
+  const rows = await db.delete(blogs).where(eq(blogs.id, id)).returning({ id: blogs.id })
 
-  return rows.length > 0;
+  return rows.length > 0
 }
 
 export async function countArticlesForBlog(db: Database, blogId: string): Promise<number> {
   const rows = await db
     .select({ count: sql<number>`count(*)` })
     .from(articles)
-    .where(eq(articles.blogId, blogId));
+    .where(eq(articles.blogId, blogId))
 
-  return rows[0]?.count ?? 0;
+  return rows[0]?.count ?? 0
 }

@@ -1,11 +1,11 @@
-import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm"
+import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
-export const userRoleValues = ["admin", "editor"] as const;
-export type UserRole = (typeof userRoleValues)[number];
+export const userRoleValues = ["admin", "editor"] as const
+export type UserRole = (typeof userRoleValues)[number]
 
-export const articleStatusValues = ["draft", "published", "hidden", "featured"] as const;
-export type ArticleStatus = (typeof articleStatusValues)[number];
+export const articleStatusValues = ["draft", "published", "hidden", "featured"] as const
+export type ArticleStatus = (typeof articleStatusValues)[number]
 
 export const users = sqliteTable(
   "users",
@@ -23,7 +23,7 @@ export const users = sqliteTable(
     check("users_role_check", sql`${table.role} in ('admin', 'editor')`),
     check("users_is_active_check", sql`${table.isActive} in (0, 1)`),
   ],
-);
+)
 
 export const sessions = sqliteTable(
   "sessions",
@@ -40,14 +40,14 @@ export const sessions = sqliteTable(
     index("idx_sessions_user").on(table.userId),
     index("idx_sessions_expires").on(table.expiresAt),
   ],
-);
+)
 
 export const authAttempts = sqliteTable("auth_attempts", {
   attemptKey: text("attempt_key").primaryKey(),
   attempts: integer("attempts").notNull().default(0),
   windowStart: integer("window_start").notNull(),
   blockedUntil: integer("blocked_until"),
-});
+})
 
 export const blogs = sqliteTable(
   "blogs",
@@ -66,7 +66,7 @@ export const blogs = sqliteTable(
     index("idx_blogs_active").on(table.isActive),
     check("blogs_is_active_check", sql`${table.isActive} in (0, 1)`),
   ],
-);
+)
 
 export const articles = sqliteTable(
   "articles",
@@ -95,7 +95,7 @@ export const articles = sqliteTable(
       sql`${table.status} in ('draft', 'published', 'hidden', 'featured')`,
     ),
   ],
-);
+)
 
 export const media = sqliteTable(
   "media",
@@ -111,15 +111,15 @@ export const media = sqliteTable(
     createdAt: text("created_at").notNull(),
   },
   (table) => [index("idx_media_blog").on(table.blogId)],
-);
+)
 
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-export type Session = typeof sessions.$inferSelect;
-export type NewSession = typeof sessions.$inferInsert;
-export type Blog = typeof blogs.$inferSelect;
-export type NewBlog = typeof blogs.$inferInsert;
-export type Article = typeof articles.$inferSelect;
-export type NewArticle = typeof articles.$inferInsert;
-export type Media = typeof media.$inferSelect;
-export type NewMedia = typeof media.$inferInsert;
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert
+export type Session = typeof sessions.$inferSelect
+export type NewSession = typeof sessions.$inferInsert
+export type Blog = typeof blogs.$inferSelect
+export type NewBlog = typeof blogs.$inferInsert
+export type Article = typeof articles.$inferSelect
+export type NewArticle = typeof articles.$inferInsert
+export type Media = typeof media.$inferSelect
+export type NewMedia = typeof media.$inferInsert

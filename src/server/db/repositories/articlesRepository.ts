@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, inArray, isNotNull, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, ne, sql, type SQL } from "drizzle-orm"
 
-import type { Database } from "../client";
-import { encodeCursor, type ArticleCursor } from "../../lib/cursor";
+import type { Database } from "../client"
+import { encodeCursor, type ArticleCursor } from "../../lib/cursor"
 import {
   articles,
   articleStatusValues,
@@ -9,9 +9,9 @@ import {
   type Article,
   type ArticleStatus,
   type NewArticle,
-} from "../schema";
+} from "../schema"
 
-type ArticleSort = "updated_at" | "published_at" | "created_at" | "title";
+type ArticleSort = "updated_at" | "published_at" | "created_at" | "title"
 
 export type ArticleSummary = Pick<
   Article,
@@ -25,27 +25,27 @@ export type ArticleSummary = Pick<
   | "createdAt"
   | "publishedAt"
   | "updatedAt"
->;
+>
 
 export type ListArticlesFilters = {
-  q?: string;
-  status?: ArticleStatus;
-  page?: number;
-  pageSize?: number;
-  sort?: ArticleSort;
-};
+  q?: string
+  status?: ArticleStatus
+  page?: number
+  pageSize?: number
+  sort?: ArticleSort
+}
 
 export type PaginatedArticles = {
-  items: ArticleSummary[];
-  total: number;
-  page: number;
-  pageSize: number;
-};
+  items: ArticleSummary[]
+  total: number
+  page: number
+  pageSize: number
+}
 
 export type PublicArticlesPage = {
-  items: ArticleSummary[];
-  nextCursor: string | null;
-};
+  items: ArticleSummary[]
+  nextCursor: string | null
+}
 
 const summaryColumns = {
   id: articles.id,
@@ -58,31 +58,31 @@ const summaryColumns = {
   createdAt: articles.createdAt,
   publishedAt: articles.publishedAt,
   updatedAt: articles.updatedAt,
-};
+}
 
-const visibleStatuses: ArticleStatus[] = ["published", "featured"];
+const visibleStatuses: ArticleStatus[] = ["published", "featured"]
 
 export async function listArticlesByBlog(
   db: Database,
   blogId: string,
   filters: ListArticlesFilters = {},
 ): Promise<PaginatedArticles> {
-  const page = Math.max(1, filters.page ?? 1);
-  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 20));
-  const conditions: SQL[] = [eq(articles.blogId, blogId)];
+  const page = Math.max(1, filters.page ?? 1)
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 20))
+  const conditions: SQL[] = [eq(articles.blogId, blogId)]
 
   if (filters.q?.trim()) {
-    const term = `%${filters.q.trim().toLowerCase()}%`;
+    const term = `%${filters.q.trim().toLowerCase()}%`
     conditions.push(
       sql`(lower(${articles.title}) like ${term} or lower(${articles.excerpt}) like ${term})`,
-    );
+    )
   }
 
   if (filters.status) {
-    conditions.push(eq(articles.status, filters.status));
+    conditions.push(eq(articles.status, filters.status))
   }
 
-  const where = and(...conditions);
+  const where = and(...conditions)
   const orderBy =
     filters.sort === "title"
       ? asc(articles.title)
@@ -90,7 +90,7 @@ export async function listArticlesByBlog(
         ? desc(articles.publishedAt)
         : filters.sort === "created_at"
           ? desc(articles.createdAt)
-          : desc(articles.updatedAt);
+          : desc(articles.updatedAt)
 
   const [items, countRows] = await Promise.all([
     db
@@ -104,14 +104,14 @@ export async function listArticlesByBlog(
       .select({ count: sql<number>`count(*)` })
       .from(articles)
       .where(where),
-  ]);
+  ])
 
   return {
     items,
     total: countRows[0]?.count ?? 0,
     page,
     pageSize,
-  };
+  }
 }
 
 export async function getArticleByBlogAndId(
@@ -123,9 +123,9 @@ export async function getArticleByBlogAndId(
     .select()
     .from(articles)
     .where(and(eq(articles.id, articleId), eq(articles.blogId, blogId)))
-    .limit(1);
+    .limit(1)
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 export async function getArticleByBlogAndSlug(
@@ -137,9 +137,9 @@ export async function getArticleByBlogAndSlug(
     .select()
     .from(articles)
     .where(and(eq(articles.blogId, blogId), eq(articles.slug, slug)))
-    .limit(1);
+    .limit(1)
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 export async function articleSlugExists(
@@ -148,29 +148,29 @@ export async function articleSlugExists(
   slug: string,
   excludeId?: string,
 ): Promise<boolean> {
-  const conditions = [eq(articles.blogId, blogId), eq(articles.slug, slug)];
+  const conditions = [eq(articles.blogId, blogId), eq(articles.slug, slug)]
 
   if (excludeId) {
-    conditions.push(ne(articles.id, excludeId));
+    conditions.push(ne(articles.id, excludeId))
   }
 
   const rows = await db
     .select({ id: articles.id })
     .from(articles)
     .where(and(...conditions))
-    .limit(1);
+    .limit(1)
 
-  return rows.length > 0;
+  return rows.length > 0
 }
 
 export async function createArticle(db: Database, input: NewArticle): Promise<Article> {
-  const [article] = await db.insert(articles).values(input).returning();
+  const [article] = await db.insert(articles).values(input).returning()
 
   if (!article) {
-    throw new Error("No se pudo crear el artículo");
+    throw new Error("No se pudo crear el artículo")
   }
 
-  return article;
+  return article
 }
 
 export async function updateArticle(
@@ -183,9 +183,9 @@ export async function updateArticle(
     .update(articles)
     .set(input)
     .where(and(eq(articles.id, articleId), eq(articles.blogId, blogId)))
-    .returning();
+    .returning()
 
-  return article ?? null;
+  return article ?? null
 }
 
 export async function deleteArticle(
@@ -196,9 +196,9 @@ export async function deleteArticle(
   const rows = await db
     .delete(articles)
     .where(and(eq(articles.id, articleId), eq(articles.blogId, blogId)))
-    .returning({ id: articles.id });
+    .returning({ id: articles.id })
 
-  return rows.length > 0;
+  return rows.length > 0
 }
 
 export async function countArticlesByBlog(
@@ -206,18 +206,18 @@ export async function countArticlesByBlog(
   blogId: string,
   statuses?: ArticleStatus[],
 ): Promise<number> {
-  const conditions: SQL[] = [eq(articles.blogId, blogId)];
+  const conditions: SQL[] = [eq(articles.blogId, blogId)]
 
   if (statuses && statuses.length > 0) {
-    conditions.push(inArray(articles.status, statuses));
+    conditions.push(inArray(articles.status, statuses))
   }
 
   const rows = await db
     .select({ count: sql<number>`count(*)` })
     .from(articles)
-    .where(and(...conditions));
+    .where(and(...conditions))
 
-  return rows[0]?.count ?? 0;
+  return rows[0]?.count ?? 0
 }
 
 export async function listPublicArticlesByBlog(
@@ -225,21 +225,21 @@ export async function listPublicArticlesByBlog(
   blogId: string,
   options: { limit?: number; cursor?: ArticleCursor | null; featured?: boolean } = {},
 ): Promise<PublicArticlesPage> {
-  const limit = Math.min(50, Math.max(1, options.limit ?? 10));
+  const limit = Math.min(50, Math.max(1, options.limit ?? 10))
   const conditions: SQL[] = [
     eq(articles.blogId, blogId),
     inArray(articles.status, visibleStatuses),
     isNotNull(articles.publishedAt),
-  ];
+  ]
 
   if (options.featured) {
-    conditions.push(eq(articles.status, "featured"));
+    conditions.push(eq(articles.status, "featured"))
   }
 
   if (options.cursor) {
     conditions.push(
       sql`(${articles.publishedAt}, ${articles.id}) < (${options.cursor.publishedAt}, ${options.cursor.id})`,
-    );
+    )
   }
 
   const rows = await db
@@ -247,11 +247,11 @@ export async function listPublicArticlesByBlog(
     .from(articles)
     .where(and(...conditions))
     .orderBy(desc(articles.publishedAt), desc(articles.id))
-    .limit(limit + 1);
+    .limit(limit + 1)
 
-  const hasMore = rows.length > limit;
-  const items = hasMore ? rows.slice(0, limit) : rows;
-  const last = items.at(-1);
+  const hasMore = rows.length > limit
+  const items = hasMore ? rows.slice(0, limit) : rows
+  const last = items.at(-1)
 
   return {
     items,
@@ -259,7 +259,7 @@ export async function listPublicArticlesByBlog(
       hasMore && last?.publishedAt
         ? encodeCursor({ publishedAt: last.publishedAt, id: last.id })
         : null,
-  };
+  }
 }
 
 export async function getPublicArticleByBlogSlug(
@@ -287,15 +287,15 @@ export async function getPublicArticleByBlogSlug(
         isNotNull(articles.publishedAt),
       ),
     )
-    .limit(1);
+    .limit(1)
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 export function isVisibleStatus(status: ArticleStatus): boolean {
-  return visibleStatuses.includes(status);
+  return visibleStatuses.includes(status)
 }
 
 export function isArticleStatus(value: string): value is ArticleStatus {
-  return articleStatusValues.includes(value as ArticleStatus);
+  return articleStatusValues.includes(value as ArticleStatus)
 }

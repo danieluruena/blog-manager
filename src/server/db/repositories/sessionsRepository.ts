@@ -1,21 +1,21 @@
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm"
 
-import type { Database } from "../client";
-import { sessions, users, type NewSession, type Session, type User } from "../schema";
+import type { Database } from "../client"
+import { sessions, users, type NewSession, type Session, type User } from "../schema"
 
 export type SessionWithUser = {
-  session: Session;
-  user: User;
-};
+  session: Session
+  user: User
+}
 
 export async function createSession(db: Database, input: NewSession): Promise<Session> {
-  const [session] = await db.insert(sessions).values(input).returning();
+  const [session] = await db.insert(sessions).values(input).returning()
 
   if (!session) {
-    throw new Error("No se pudo crear la sesión");
+    throw new Error("No se pudo crear la sesión")
   }
 
-  return session;
+  return session
 }
 
 export async function findValidSessionByTokenHash(
@@ -30,34 +30,34 @@ export async function findValidSessionByTokenHash(
     .where(
       and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, now), eq(users.isActive, true)),
     )
-    .limit(1);
+    .limit(1)
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 export async function deleteSessionByTokenHash(db: Database, tokenHash: string): Promise<boolean> {
   const rows = await db
     .delete(sessions)
     .where(eq(sessions.tokenHash, tokenHash))
-    .returning({ id: sessions.id });
+    .returning({ id: sessions.id })
 
-  return rows.length > 0;
+  return rows.length > 0
 }
 
 export async function deleteSessionsByUserId(db: Database, userId: string): Promise<number> {
   const rows = await db
     .delete(sessions)
     .where(eq(sessions.userId, userId))
-    .returning({ id: sessions.id });
+    .returning({ id: sessions.id })
 
-  return rows.length;
+  return rows.length
 }
 
 export async function deleteExpiredSessions(db: Database, now: string): Promise<number> {
   const rows = await db
     .delete(sessions)
     .where(lt(sessions.expiresAt, now))
-    .returning({ id: sessions.id });
+    .returning({ id: sessions.id })
 
-  return rows.length;
+  return rows.length
 }

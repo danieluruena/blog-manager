@@ -1,26 +1,26 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm"
 
-import type { Database } from "../client";
-import { articles, blogs } from "../schema";
-import type { ArticleSummary } from "./articlesRepository";
+import type { Database } from "../client"
+import { articles, blogs } from "../schema"
+import type { ArticleSummary } from "./articlesRepository"
 
 export type DashboardStats = {
-  totalBlogs: number;
-  activeBlogs: number;
-  totalArticles: number;
-  publishedArticles: number;
-  draftArticles: number;
-  featuredArticles: number;
-};
+  totalBlogs: number
+  activeBlogs: number
+  totalArticles: number
+  publishedArticles: number
+  draftArticles: number
+  featuredArticles: number
+}
 
 export type RecentArticle = ArticleSummary & {
-  blogName: string;
-  blogSlug: string;
-};
+  blogName: string
+  blogSlug: string
+}
 
 async function scalarCount(query: Promise<Array<{ count: number }>>): Promise<number> {
-  const rows = await query;
-  return rows[0]?.count ?? 0;
+  const rows = await query
+  return rows[0]?.count ?? 0
 }
 
 export async function getDashboardStats(db: Database): Promise<DashboardStats> {
@@ -58,7 +58,7 @@ export async function getDashboardStats(db: Database): Promise<DashboardStats> {
         .from(articles)
         .where(eq(articles.status, "featured")),
     ),
-  ]);
+  ])
 
   return {
     totalBlogs,
@@ -67,7 +67,7 @@ export async function getDashboardStats(db: Database): Promise<DashboardStats> {
     publishedArticles,
     draftArticles,
     featuredArticles,
-  };
+  }
 }
 
 export async function getRecentArticles(db: Database, limit = 5): Promise<RecentArticle[]> {
@@ -89,5 +89,5 @@ export async function getRecentArticles(db: Database, limit = 5): Promise<Recent
     .from(articles)
     .innerJoin(blogs, eq(articles.blogId, blogs.id))
     .orderBy(desc(articles.updatedAt))
-    .limit(Math.min(20, Math.max(1, limit)));
+    .limit(Math.min(20, Math.max(1, limit)))
 }

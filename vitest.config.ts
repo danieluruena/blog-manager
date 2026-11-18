@@ -1,12 +1,10 @@
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from "node:url"
 
-import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
-import { defineConfig } from "vitest/config";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin"
+import { defineConfig } from "vitest/config"
 
 export default defineConfig(async () => {
-  const migrations = await readD1Migrations(
-    fileURLToPath(new URL("./migrations", import.meta.url)),
-  );
+  const migrations = await readD1Migrations(fileURLToPath(new URL("./migrations", import.meta.url)))
 
   return {
     plugins: [
@@ -23,5 +21,5 @@ export default defineConfig(async () => {
       include: ["tests/**/*.test.ts"],
       setupFiles: ["./tests/apply-migrations.ts"],
     },
-  };
-});
+  }
+})

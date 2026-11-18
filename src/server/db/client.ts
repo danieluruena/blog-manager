@@ -1,13 +1,13 @@
-import { drizzle } from "drizzle-orm/d1";
+import { drizzle } from "drizzle-orm/d1"
 
-import * as schema from "./schema";
+import * as schema from "./schema"
 
 export function createDb(database: D1Database) {
-  return drizzle(database, { schema });
+  return drizzle(database, { schema })
 }
 
-export type Database = ReturnType<typeof createDb>;
+export type Database = ReturnType<typeof createDb>
 
 export function getDb(env: Pick<Env, "DB">): Database {
-  return createDb(env.DB);
+  return createDb(env.DB)
 }

@@ -1,11 +1,11 @@
-import { constantTimeEqual, fromHex, randomHex, toHex } from "./encoding";
+import { constantTimeEqual, fromHex, randomHex, toHex } from "./encoding"
 
-const ALGORITHM = "pbkdf2";
-const ITERATIONS = 600_000;
-const SALT_BYTES = 16;
-const HASH_BYTES = 32;
-const MIN_ITERATIONS = 100_000;
-const MAX_ITERATIONS = 1_000_000;
+const ALGORITHM = "pbkdf2"
+const ITERATIONS = 600_000
+const SALT_BYTES = 16
+const HASH_BYTES = 32
+const MIN_ITERATIONS = 100_000
+const MAX_ITERATIONS = 1_000_000
 
 async function derivePassword(
   password: string,
@@ -18,7 +18,7 @@ async function derivePassword(
     "PBKDF2",
     false,
     ["deriveBits"],
-  );
+  )
 
   const bits = await crypto.subtle.deriveBits(
     {
@@ -29,42 +29,42 @@ async function derivePassword(
     },
     keyMaterial,
     HASH_BYTES * 8,
-  );
+  )
 
-  return new Uint8Array(bits);
+  return new Uint8Array(bits)
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  const salt = fromHex(randomHex(SALT_BYTES));
-  const hash = await derivePassword(password, salt, ITERATIONS);
+  const salt = fromHex(randomHex(SALT_BYTES))
+  const hash = await derivePassword(password, salt, ITERATIONS)
 
-  return `${ALGORITHM}$${ITERATIONS}$${toHex(salt)}$${toHex(hash)}`;
+  return `${ALGORITHM}$${ITERATIONS}$${toHex(salt)}$${toHex(hash)}`
 }
 
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const parts = storedHash.split("$");
+  const parts = storedHash.split("$")
 
   if (parts.length !== 4 || parts[0] !== ALGORITHM) {
-    return false;
+    return false
   }
 
-  const iterations = Number.parseInt(parts[1], 10);
+  const iterations = Number.parseInt(parts[1], 10)
 
   if (!Number.isInteger(iterations) || iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) {
-    return false;
+    return false
   }
 
-  let salt: Uint8Array<ArrayBuffer>;
-  let expected: Uint8Array;
+  let salt: Uint8Array<ArrayBuffer>
+  let expected: Uint8Array
 
   try {
-    salt = fromHex(parts[2]);
-    expected = fromHex(parts[3]);
+    salt = fromHex(parts[2])
+    expected = fromHex(parts[3])
   } catch {
-    return false;
+    return false
   }
 
-  const actual = await derivePassword(password, salt, iterations);
+  const actual = await derivePassword(password, salt, iterations)
 
-  return constantTimeEqual(actual, expected);
+  return constantTimeEqual(actual, expected)
 }

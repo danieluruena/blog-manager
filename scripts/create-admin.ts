@@ -1,31 +1,31 @@
-import { randomUUID } from "node:crypto";
-import { unlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { stdin as input, stdout as output } from "node:process";
-import { createInterface } from "node:readline/promises";
-import { parseArgs } from "node:util";
+import { randomUUID } from "node:crypto"
+import { unlinkSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { stdin as input, stdout as output } from "node:process"
+import { createInterface } from "node:readline/promises"
+import { parseArgs } from "node:util"
 
-import { nowIso } from "../src/server/lib/dates";
-import { newId } from "../src/server/lib/ids";
-import { hashPassword } from "../src/server/lib/password";
+import { nowIso } from "../src/server/lib/dates"
+import { newId } from "../src/server/lib/ids"
+import { hashPassword } from "../src/server/lib/password"
 
-import { assertWranglerAuthenticated, runWrangler } from "./lib/wrangler";
+import { assertWranglerAuthenticated, runWrangler } from "./lib/wrangler"
 
-const DB_NAME = "blog-manager-db";
-const MIN_PASSWORD_LENGTH = 12;
+const DB_NAME = "blog-manager-db"
+const MIN_PASSWORD_LENGTH = 12
 
 function usage(): string {
-  return "Uso: npm run user:create -- --email <email> --name <nombre> [--role admin|editor] [--remote]";
+  return "Uso: npm run user:create -- --email <email> --name <nombre> [--role admin|editor] [--remote]"
 }
 
 async function promptLine(question: string): Promise<string> {
-  const readline = createInterface({ input, output });
+  const readline = createInterface({ input, output })
 
   try {
-    return (await readline.question(question)).trim();
+    return (await readline.question(question)).trim()
   } finally {
-    readline.close();
+    readline.close()
   }
 }
 
@@ -35,64 +35,64 @@ function promptHidden(question: string): Promise<string> {
       new Error(
         "No hay una terminal interactiva. Define la variable ADMIN_PASSWORD para ejecutar en modo no interactivo.",
       ),
-    );
+    )
   }
 
   return new Promise((resolve, reject) => {
-    output.write(question);
-    input.setRawMode(true);
-    input.resume();
-    input.setEncoding("utf8");
+    output.write(question)
+    input.setRawMode(true)
+    input.resume()
+    input.setEncoding("utf8")
 
-    let value = "";
+    let value = ""
 
     const cleanup = () => {
-      input.off("data", onData);
-      input.setRawMode(false);
-      input.pause();
-    };
+      input.off("data", onData)
+      input.setRawMode(false)
+      input.pause()
+    }
 
     const onData = (chunk: string) => {
       for (const character of chunk) {
         if (character === "\r" || character === "\n") {
-          cleanup();
-          output.write("\n");
-          resolve(value);
-          return;
+          cleanup()
+          output.write("\n")
+          resolve(value)
+          return
         }
 
         if (character === "\u0003") {
-          cleanup();
-          output.write("\n");
-          reject(new Error("Operación cancelada."));
-          return;
+          cleanup()
+          output.write("\n")
+          reject(new Error("Operación cancelada."))
+          return
         }
 
         if (character === "\u007f" || character === "\b") {
           if (value.length > 0) {
-            value = value.slice(0, -1);
-            output.write("\b \b");
+            value = value.slice(0, -1)
+            output.write("\b \b")
           }
-          continue;
+          continue
         }
 
-        value += character;
-        output.write("*");
+        value += character
+        output.write("*")
       }
-    };
+    }
 
-    input.on("data", onData);
-  });
+    input.on("data", onData)
+  })
 }
 
 function validateEmail(email: string): void {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new Error("El email no tiene un formato válido.");
+    throw new Error("El email no tiene un formato válido.")
   }
 }
 
 function sqlString(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`;
+  return `'${value.replace(/'/g, "''")}'`
 }
 
 async function main(): Promise<void> {
@@ -104,58 +104,58 @@ async function main(): Promise<void> {
       remote: { type: "boolean", default: false },
     },
     strict: true,
-  });
+  })
 
   const email = (
     values.email?.trim() || (await promptLine("Email del administrador: "))
-  ).toLowerCase();
-  const name = values.name?.trim() || (await promptLine("Nombre: "));
+  ).toLowerCase()
+  const name = values.name?.trim() || (await promptLine("Nombre: "))
 
   if (!email) {
-    throw new Error("El email es obligatorio.");
+    throw new Error("El email es obligatorio.")
   }
 
   if (!name) {
-    throw new Error("El nombre es obligatorio.");
+    throw new Error("El nombre es obligatorio.")
   }
 
-  validateEmail(email);
+  validateEmail(email)
 
   if (name.length > 120) {
-    throw new Error("El nombre no puede superar los 120 caracteres.");
+    throw new Error("El nombre no puede superar los 120 caracteres.")
   }
 
-  const role = values.role;
+  const role = values.role
 
   if (role !== "admin" && role !== "editor") {
-    throw new Error("El rol debe ser `admin` o `editor`.");
+    throw new Error("El rol debe ser `admin` o `editor`.")
   }
 
-  let password = process.env.ADMIN_PASSWORD;
+  let password = process.env.ADMIN_PASSWORD
 
   if (!password) {
-    password = await promptHidden(`Contraseña (mínimo ${MIN_PASSWORD_LENGTH} caracteres): `);
-    const confirmation = await promptHidden("Repite la contraseña: ");
+    password = await promptHidden(`Contraseña (mínimo ${MIN_PASSWORD_LENGTH} caracteres): `)
+    const confirmation = await promptHidden("Repite la contraseña: ")
 
     if (password !== confirmation) {
-      throw new Error("Las contraseñas no coinciden.");
+      throw new Error("Las contraseñas no coinciden.")
     }
   }
 
   if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+    throw new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
   }
 
-  const remote = values.remote === true;
+  const remote = values.remote === true
 
   if (remote) {
-    assertWranglerAuthenticated();
+    assertWranglerAuthenticated()
   }
 
-  console.log("Generando hash de contraseña...");
-  const passwordHash = await hashPassword(password);
-  const timestamp = nowIso();
-  const id = newId();
+  console.log("Generando hash de contraseña...")
+  const passwordHash = await hashPassword(password)
+  const timestamp = nowIso()
+  const id = newId()
 
   const sql = `INSERT INTO users (
   id, email, name, password_hash, role, is_active, created_at, updated_at
@@ -169,10 +169,10 @@ async function main(): Promise<void> {
   ${sqlString(timestamp)},
   ${sqlString(timestamp)}
 );
-`;
+`
 
-  const sqlPath = join(tmpdir(), `blog-manager-admin-${randomUUID()}.sql`);
-  writeFileSync(sqlPath, sql, "utf8");
+  const sqlPath = join(tmpdir(), `blog-manager-admin-${randomUUID()}.sql`)
+  writeFileSync(sqlPath, sql, "utf8")
 
   try {
     const result = runWrangler([
@@ -182,33 +182,33 @@ async function main(): Promise<void> {
       remote ? "--remote" : "--local",
       "--file",
       sqlPath,
-    ]);
+    ])
 
     if (result.status !== 0) {
-      const outputText = `${result.stdout}\n${result.stderr}`;
+      const outputText = `${result.stdout}\n${result.stderr}`
 
       if (/UNIQUE constraint failed/i.test(outputText)) {
-        throw new Error("Ya existe un usuario con ese email.");
+        throw new Error("Ya existe un usuario con ese email.")
       }
 
       if (/no such table/i.test(outputText)) {
         throw new Error(
           "La tabla `users` no existe. Aplica las migraciones locales o remotas antes de crear el administrador.",
-        );
+        )
       }
 
-      throw new Error(`No se pudo crear el usuario.\n${outputText.trim()}`);
+      throw new Error(`No se pudo crear el usuario.\n${outputText.trim()}`)
     }
   } finally {
-    unlinkSync(sqlPath);
+    unlinkSync(sqlPath)
   }
 
-  console.log(`\n✓ Usuario creado: ${email} (${role})`);
-  console.log(`  D1: ${remote ? "remota" : "local"}`);
+  console.log(`\n✓ Usuario creado: ${email} (${role})`)
+  console.log(`  D1: ${remote ? "remota" : "local"}`)
 }
 
 main().catch((error: unknown) => {
-  console.error(`\n✖ ${error instanceof Error ? error.message : "Error desconocido"}`);
-  console.error(`\n${usage()}\n`);
-  process.exitCode = 1;
-});
+  console.error(`\n✖ ${error instanceof Error ? error.message : "Error desconocido"}`)
+  console.error(`\n${usage()}\n`)
+  process.exitCode = 1
+})
