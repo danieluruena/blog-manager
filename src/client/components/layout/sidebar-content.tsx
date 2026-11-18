@@ -87,7 +87,14 @@ export function SidebarContent({
           </div>
         ) : blogs.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line px-3 py-4 text-xs leading-5 text-muted-foreground">
-            Todavía no hay blogs. El CRUD llega en la siguiente fase.
+            Todavía no hay blogs.
+            <Link
+              to="/blogs"
+              onClick={onNavigate}
+              className="mt-2 block text-brand hover:underline"
+            >
+              Crear el primero
+            </Link>
           </div>
         ) : (
           <div className="space-y-1">

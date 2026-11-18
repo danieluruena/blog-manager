@@ -176,20 +176,20 @@ export function DashboardPage() {
           <CardContent className="space-y-3 px-5">
             <div className="rounded-xl border border-line bg-surface-2/60 p-4">
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Fase 4
-              </p>
-              <p className="mt-2 text-sm font-medium text-ink">CRUD de blogs</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Crear, editar, activar y desactivar blogs desde la interfaz.
-              </p>
-            </div>
-            <div className="rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 Fase 5
               </p>
               <p className="mt-2 text-sm font-medium text-ink">Editor de artículos</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Markdown, estados editoriales, imágenes y publicación.
+                Markdown, estados editoriales, fechas y publicación.
+              </p>
+            </div>
+            <div className="rounded-xl border border-line bg-surface-2/60 p-4">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Fase 6
+              </p>
+              <p className="mt-2 text-sm font-medium text-ink">Imágenes en R2</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Copiar, pegar y subir imágenes directamente al editor.
               </p>
             </div>
             <Button className="w-full" variant="outline" asChild>
