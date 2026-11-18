@@ -121,6 +121,16 @@ npm run check      # typecheck + lint + tests + build
 npm run format     # Prettier sobre el código
 ```
 
+## CI
+
+Cada pull request ejecuta automáticamente:
+
+1. `npm ci`
+2. `npm run lint`
+3. `npm run build`
+
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Los tests todavía no forman parte del pipeline; se añadirán más adelante.
+
 ## Scripts
 
 | Comando               | Descripción                                     |
