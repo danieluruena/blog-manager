@@ -1,0 +1,3 @@
+# Copia este archivo a .dev.vars para desarrollo local.
+# No hay secretos obligatorios en la Fase 0.
+# APP_ENV=development
