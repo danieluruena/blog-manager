@@ -92,7 +92,7 @@ export function LoginPage() {
 
           <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             <span className="size-1.5 rounded-full bg-success" />
-            Fase 3 · UI base
+            Fase 5 · Editor
           </div>
         </section>
 

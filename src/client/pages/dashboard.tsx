@@ -170,13 +170,13 @@ export function DashboardPage() {
           <CardHeader className="px-5">
             <CardTitle className="text-base">Siguiente paso</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              La base está lista. Ahora toca gestionar el contenido.
+              La gestión editorial está lista. Ahora toca las imágenes.
             </p>
           </CardHeader>
           <CardContent className="space-y-3 px-5">
             <div className="rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Fase 5
+              <p className="font-mono text-[10px] uppercase tracking-widest text-success">
+                Fase 5 · Completada
               </p>
               <p className="mt-2 text-sm font-medium text-ink">Editor de artículos</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">

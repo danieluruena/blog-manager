@@ -153,7 +153,7 @@ export function SidebarContent({
         </div>
 
         <div className="mt-3 flex items-center justify-between px-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          <span>Fase 3</span>
+          <span>Fase 5</span>
           <Link to="/blogs" onClick={onNavigate} className="hover:text-ink">
             Ver blogs
           </Link>

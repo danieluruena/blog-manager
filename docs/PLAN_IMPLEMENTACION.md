@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. El editor de artículos y las imágenes son las siguientes fases.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Las imágenes en R2 son la siguiente fase.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -341,30 +341,30 @@ Gestionar artículos por blog con un editor cómodo y publicación clara.
 
 ### Tareas
 
-- [ ] Pantalla `/blogs/:blogId/articles`:
-  - [ ] Cabecera del blog con estado, URL y acciones.
-  - [ ] Barra de filtros: búsqueda, estado, orden.
-  - [ ] Tabla/cards con título, autor, estado, publicación, actualización y acciones.
-  - [ ] Paginación.
-  - [ ] Acciones rápidas: editar, publicar/despublicar, borrar.
-- [ ] Editor `/blogs/:blogId/articles/new` y `/:articleId`:
-  - [ ] Campo título grande.
-  - [ ] Panel de metadatos: blog (solo lectura), autor, estado, fecha de creación (solo lectura), fecha de publicación, slug.
-  - [ ] Editor markdown con toolbar y vista previa (MDXEditor, carga diferida).
-  - [ ] Modo “ver markdown”.
-  - [ ] Botones Guardar, Cancelar y Publicar.
-  - [ ] Aviso de cambios sin guardar (beforeunload + navegación interna).
-  - [ ] Contador de palabras/caracteres.
-  - [ ] Manejo de errores de validación y conflictos de slug.
-- [ ] Flujo de publicación:
-  - [ ] Si se elige `published`/`featured` y no hay fecha, asignar ahora (servidor).
-  - [ ] Feedback claro del estado resultante.
-- [ ] Acciones de estado desde la tabla con actualización optimista.
-- [ ] Confirmación de borrado de artículo.
-- [ ] Estado vacío: “Este blog todavía no tiene artículos”.
-- [ ] Atajo `Ctrl/Cmd + S` para guardar.
-- [ ] Tests de componentes críticos (formulario, editor, toggle de estado).
-- [ ] Vista previa con `react-markdown` + `remark-gfm` + `rehype-sanitize` o la del editor.
+- [x] Pantalla `/blogs/:blogId/articles`:
+  - [x] Cabecera del blog con estado, URL y acciones.
+  - [x] Barra de filtros: búsqueda, estado, orden.
+  - [x] Tabla/cards con título, autor, estado, publicación, actualización y acciones.
+  - [x] Paginación.
+  - [x] Acciones rápidas: editar, publicar/despublicar, borrar.
+- [x] Editor `/blogs/:blogId/articles/new` y `/:articleId`:
+  - [x] Campo título grande.
+  - [x] Panel de metadatos: blog (solo lectura), autor, estado, fecha de creación (solo lectura), fecha de publicación, slug.
+  - [x] Editor markdown con toolbar y vista previa (MDXEditor, carga diferida).
+  - [x] Modo “ver markdown”.
+  - [x] Botones Guardar, Cancelar y Publicar.
+  - [x] Aviso de cambios sin guardar (beforeunload + navegación interna).
+  - [x] Contador de palabras/caracteres.
+  - [x] Manejo de errores de validación y conflictos de slug.
+- [x] Flujo de publicación:
+  - [x] Si se elige `published`/`featured` y no hay fecha, asignar ahora (servidor).
+  - [x] Feedback claro del estado resultante.
+- [x] Acciones de estado desde la tabla con actualización optimista.
+- [x] Confirmación de borrado de artículo.
+- [x] Estado vacío: “Este blog todavía no tiene artículos”.
+- [x] Atajo `Ctrl/Cmd + S` para guardar.
+- [ ] Tests de componentes críticos (formulario, editor, toggle de estado). Pendiente: requiere entorno DOM (jsdom/RTL); la lógica de fechas y recuento ya tiene tests unitarios.
+- [x] Vista previa con el modo visual de MDXEditor.
 
 ### Criterios de aceptación
 
