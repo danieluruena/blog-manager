@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. La API y la UI del CRUD son las siguientes fases.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. La UI del CRUD y el editor son las siguientes fases.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -153,7 +153,7 @@ Tener el esquema definitivo, migraciones reproducibles, repositorios tipados y u
   - [ ] `nowIso()` y normalización de fechas.
   - [ ] Generación de IDs.
   - [ ] Generación de slugs y resolución de colisiones.
-  - [ ] `hashPassword`/`verifyPassword` (PBKDF2-SHA256, 600.000 iteraciones).
+  - [ ] `hashPassword`/`verifyPassword` (HMAC-SHA256 + pepper secreto, compatible con el plan gratuito de Workers).
   - [ ] `generateSessionToken`/`hashSessionToken`.
 - [ ] Implementar `scripts/create-admin.ts`:
   - [ ] Pide email, nombre y contraseña de forma interactiva.

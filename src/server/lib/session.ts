@@ -1,4 +1,4 @@
-import { randomHex, toHex } from "./encoding"
+import { randomHex, sha256Hex } from "./encoding"
 
 const SESSION_TOKEN_BYTES = 32
 
@@ -7,6 +7,5 @@ export function generateSessionToken(): string {
 }
 
 export async function hashSessionToken(token: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token))
-  return toHex(new Uint8Array(digest))
+  return sha256Hex(token)
 }

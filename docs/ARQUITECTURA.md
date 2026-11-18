@@ -81,7 +81,7 @@ D1 tiene límites de 500 MB por base en el plan gratuito y 10 GB en el plan pago
 | Validación | `zod` + `@hono/zod-validator` |
 | ORM | `drizzle-orm` (driver `d1`) |
 | Migraciones | `drizzle-kit generate` + `wrangler d1 migrations apply` |
-| Autenticación | Sesiones opacas en D1 + PBKDF2 con Web Crypto |
+| Autenticación | Sesiones opacas en D1 + HMAC-SHA256 con pepper |
 | Imágenes | R2 binding + endpoint `/media/*` |
 | Logs | `observability` de Workers + logs JSON estructurados |
 | Tests | `vitest` + `@cloudflare/vitest-plugin` |
@@ -355,7 +355,7 @@ CREATE TABLE media (
 | `id` | UUID | Generado en el servidor. |
 | `email` | string | Único global, minúsculas, formato de email válido. |
 | `name` | string | 1–120 caracteres. |
-| `password_hash` | string | PBKDF2-SHA256 (`pbkdf2$iteraciones$salt$hash`). Nunca se devuelve en la API. |
+| `password_hash` | string | HMAC-SHA256 con pepper y salt por usuario (`hmac-sha256$1$salt$hash`). El pepper vive en un secret del Worker, no en D1. Nunca se devuelve en la API. |
 | `role` | enum | `admin` o `editor`. En el MVP solo existe un `admin`. |
 | `is_active` | boolean | Un usuario desactivado no puede iniciar sesión. |
 | `created_at` | ISO 8601 | UTC, generado por el servidor. |
@@ -640,15 +640,18 @@ Se implementa autenticación propia, sin Cloudflare Access, para que funcione en
 - Tabla `users` con email único, nombre, hash de contraseña, rol (`admin`/`editor`) y estado.
 - En el MVP solo se crea un administrador; el esquema y el middleware ya soportan múltiples usuarios.
 - El registro público está deshabilitado. Los usuarios se crean por CLI en el MVP y por la UI de administración en una fase posterior.
-- Contraseñas con PBKDF2-SHA256, salt aleatorio de 16 bytes y ~600.000 iteraciones. Formato almacenado: `pbkdf2$600000$<salt>$<hash>`.
-- Comparación en tiempo constante con `crypto.subtle.timingSafeEqual`.
+- Contraseñas con HMAC-SHA256, salt aleatorio de 16 bytes y un pepper secreto de al menos 32 caracteres. Formato almacenado: `hmac-sha256$1$<salt>$<hash>`.
+- El pepper se guarda en el secret `AUTH_PEPPER` del Worker y nunca en D1.
+- Comparación en tiempo constante.
 - El hash nunca se devuelve en la API ni se registra en logs.
+
+> **Por qué no PBKDF2:** el plan gratuito de Workers limita a 10 ms de CPU por petición. PBKDF2 con 600.000 iteraciones consume ~100 ms y el login fallaría con Error 1102. HMAC-SHA256 con pepper es viable en el plan gratuito y protege las contraseñas si se filtra D1 pero no el secret del Worker. Si se filtra también el pepper, un atacante podría atacar offline. Para una seguridad mayor, migrar a Workers Paid y usar PBKDF2/Argon2, o usar Cloudflare Access con un dominio propio.
 
 ### 8.2. Sesiones
 
 - Al hacer login se genera un token aleatorio de 32 bytes con `crypto.getRandomValues`.
 - La cookie contiene el token en claro; la tabla `sessions` guarda solo su SHA-256.
-- Cookie: `bm_session`, `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, `Max-Age=604800` (7 días).
+- Cookie: `bm_session`, `HttpOnly`, `Secure` en HTTPS, `SameSite=Strict`, `Path=/`, `Max-Age=604800` (7 días).
 - Cada petición a `/api/admin/*` valida la cookie: hash → sesión → usuario activo → expiración.
 - Logout borra la sesión y la cookie. Cambiar contraseña o desactivar un usuario revoca sus sesiones.
 - Limpieza oportunista de sesiones expiradas en el login o en una tarea programada (post-MVP).
@@ -657,7 +660,8 @@ Se implementa autenticación propia, sin Cloudflare Access, para que funcione en
 
 - `scripts/create-admin.ts` pide email, nombre y contraseña, calcula el hash con la misma implementación y ejecuta el `INSERT` en D1 local o remoto.
 - No hay contraseña por defecto ni endpoint de bootstrap público.
-- Para producción: `npm run user:create -- --email ... --name ... --remote`.
+- En local lee `AUTH_PEPPER` de `.dev.vars`; para `--remote` hay que pasar el mismo valor del secret del Worker.
+- Para producción: `wrangler secret put AUTH_PEPPER` y después `npm run user:create -- --email ... --name ... --remote` con `AUTH_PEPPER` en el entorno.
 - La contraseña se escribe de forma interactiva; no se pasa por argumentos ni queda en el historial.
 
 ### 8.4. Protecciones
@@ -679,7 +683,7 @@ Se implementa autenticación propia, sin Cloudflare Access, para que funcione en
 - **CORS:** solo en la API pública; sin credenciales; `Access-Control-Allow-Origin` calculado desde `site_url` + `allowed_origins`; `Vary: Origin`.
 - **Rate limiting:** login (tabla `auth_attempts`) y API pública (límite por IP, Workers Rate Limiting binding o contador en D1).
 - **Uploads:** límite de 5 MB, MIME permitido (`image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`), nombre generado en servidor, `Content-Disposition: inline`, `nosniff`. Evitar SVG sin sanitizar.
-- **Secretos:** no hay secretos de auth obligatorios con sesiones opacas; si se añaden API keys o email, usar `wrangler secret put` o Secrets Store. Nunca en `wrangler.jsonc` ni en el código.
+- **Secretos:** `AUTH_PEPPER` es obligatorio para hashear contraseñas. En producción se configura con `wrangler secret put AUTH_PEPPER`; en local vive en `.dev.vars`. Nunca en `wrangler.jsonc` ni en el código.
 - **Logs:** sin bodies, contraseñas ni tokens; request ID para correlación.
 - **Backups:** Time Travel de D1 + export periódico opcional.
 
@@ -975,7 +979,7 @@ Pero en este proyecto también añadiría:
 
 | Riesgo | Mitigación |
 |---|---|
-| Login propio mal implementado | PBKDF2, cookies `HttpOnly`/`Secure`/`SameSite`, rate limiting, tests de auth y revisión de seguridad. |
+| Login propio mal implementado | HMAC-SHA256 con pepper, cookies `HttpOnly`/`Secure`/`SameSite`, rate limiting, tests de auth y revisión de seguridad. |
 | Pérdida de la contraseña del único admin | CLI de reseteo con acceso a D1/Wrangler; documentar el procedimiento; futuro reset por email. |
 | Borrar un blog con artículos | Bloqueo `409` + FK `RESTRICT` + UI que recomienda desactivar. |
 | CORS no es una barrera de seguridad | Documentar que los artículos son públicos; API key solo para builds/SSR, nunca en el navegador. |

@@ -26,6 +26,11 @@ export function randomHex(byteLength: number): string {
   return toHex(crypto.getRandomValues(new Uint8Array(byteLength)))
 }
 
+export async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))
+  return toHex(new Uint8Array(digest))
+}
+
 export function constantTimeEqual(left: Uint8Array, right: Uint8Array): boolean {
   if (left.length !== right.length) {
     return false
