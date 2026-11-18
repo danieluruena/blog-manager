@@ -84,7 +84,7 @@ D1 tiene límites de 500 MB por base en el plan gratuito y 10 GB en el plan pago
 | Autenticación | Sesiones opacas en D1 + PBKDF2 con Web Crypto |
 | Imágenes | R2 binding + endpoint `/media/*` |
 | Logs | `observability` de Workers + logs JSON estructurados |
-| Tests | `vitest` + `@cloudflare/vitest-pool-workers` |
+| Tests | `vitest` + `@cloudflare/vitest-plugin` |
 
 ### Frontend
 
@@ -940,7 +940,7 @@ Pero en este proyecto también añadiría:
 - Normalización de fechas.
 - Esquemas Zod.
 
-### Integración de API (`@cloudflare/vitest-pool-workers`)
+### Integración de API (`@cloudflare/vitest-plugin`)
 
 - CRUD de blogs y artículos.
 - Autenticación: login, logout, cookie, sesión expirada, usuario desactivado y rate limit.

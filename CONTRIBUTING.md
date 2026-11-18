@@ -4,12 +4,12 @@ Este repositorio sigue un flujo tipo **GitFlow simplificado**.
 
 ## Ramas
 
-| Rama | Propósito | Despliegue |
-|---|---|---|
-| `main` | Producción | Sí, al recibir un PR desde `develop`. |
-| `develop` | Integración | Preview/staging (cuando exista). |
-| `feat/<slug>` | Nueva funcionalidad | Preview de la PR (opcional). |
-| `fix/<slug>` | Corrección | Preview de la PR (opcional). |
+| Rama          | Propósito           | Despliegue                            |
+| ------------- | ------------------- | ------------------------------------- |
+| `main`        | Producción          | Sí, al recibir un PR desde `develop`. |
+| `develop`     | Integración         | Preview/staging (cuando exista).      |
+| `feat/<slug>` | Nueva funcionalidad | Preview de la PR (opcional).          |
+| `fix/<slug>`  | Corrección          | Preview de la PR (opcional).          |
 
 ## Reglas
 

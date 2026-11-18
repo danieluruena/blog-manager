@@ -103,7 +103,7 @@ Tener un esqueleto que arranque en local y se despliegue, con la configuración 
   - [ ] Muestra los IDs y los pasos para actualizar `wrangler.jsonc`.
   - [ ] No sobrescribe configuración existente.
 - [ ] Crear el esqueleto de `scripts/create-admin.ts` (sin lógica de negocio todavía).
-- [ ] Configurar Vitest con `@cloudflare/vitest-pool-workers` (esqueleto).
+- [ ] Configurar Vitest con `@cloudflare/vitest-plugin` (esqueleto).
 - [ ] Verificar `npm run dev`, `npm run build` y `npm run preview`.
 
 ### Criterios de aceptación
@@ -429,7 +429,7 @@ Cerrar seguridad, rendimiento, accesibilidad y cobertura de tests.
 - [ ] Revisar CORS: origen de `site_url`, `allowed_origins`, `Vary: Origin`, sin credenciales.
 - [ ] Revisar cabeceras de seguridad y CSP ajustada al build.
 - [ ] Revisar uploads: MIME, tamaño, `nosniff`, SVG.
-- [ ] Tests de integración completos con `@cloudflare/vitest-pool-workers`.
+- [ ] Tests de integración completos con `@cloudflare/vitest-plugin`.
 - [ ] Test E2E de humo con Playwright (opcional):
   - [ ] Login → crear blog → crear artículo → subir imagen → publicar → verificar API pública → borrado bloqueado.
 - [ ] Auditoría de accesibilidad: foco, contraste, labels, teclado.
@@ -559,7 +559,7 @@ npm create cloudflare@latest -- ../blog-manager-scaffold --framework=react
 npm init -y
 npm install react react-dom hono zod drizzle-orm
 npm install -D vite @vitejs/plugin-react typescript @cloudflare/vite-plugin wrangler \
-  drizzle-kit @cloudflare/vitest-pool-workers vitest tsx
+  drizzle-kit @cloudflare/vitest-plugin vitest tsx
 
 npx wrangler d1 create blog-manager-db
 npx wrangler r2 bucket create blog-manager-media
