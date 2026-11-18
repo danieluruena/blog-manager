@@ -1,17 +1,12 @@
-import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+import { assertWranglerAuthenticated, runWrangler } from "./lib/wrangler";
 
 const ROOT = process.cwd();
 const CONFIG_PATH = resolve(ROOT, "wrangler.jsonc");
 const DB_NAME = "blog-manager-db";
 const BUCKET_NAME = "blog-manager-media";
-
-type CommandResult = {
-  status: number | null;
-  stdout: string;
-  stderr: string;
-};
 
 type D1Record = {
   name?: string;
@@ -20,32 +15,16 @@ type D1Record = {
   database_id?: string;
 };
 
-function runWrangler(args: string[]): CommandResult {
-  const result = spawnSync("npx", ["--no-install", "wrangler", ...args], {
-    cwd: ROOT,
-    encoding: "utf8",
-    shell: true,
-    env: process.env,
-  });
-
-  return {
-    status: result.status,
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
-  };
-}
-
 function fail(message: string): never {
   console.error(`\n✖ ${message}\n`);
   process.exit(1);
 }
 
 function assertAuthenticated(): void {
-  const result = runWrangler(["whoami"]);
-  const output = `${result.stdout}\n${result.stderr}`;
-
-  if (result.status !== 0 || /not authenticated/i.test(output)) {
-    fail("Wrangler no está autenticado. Ejecuta `npx wrangler login` y vuelve a intentarlo.");
+  try {
+    assertWranglerAuthenticated(ROOT);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : "Wrangler no está autenticado.");
   }
 }
 

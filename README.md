@@ -10,7 +10,7 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 0 — Fundaciones.** La SPA, el Worker, `/api/health`, el tema base y la configuración de Cloudflare están listos. El CRUD, la autenticación y el editor llegan en las siguientes fases.
+**Fase 1 — Modelo de datos.** La SPA, el Worker, `/api/health`, el tema base, el esquema D1, las migraciones, los repositorios, el seed y la CLI de administración están listos. La API y la UI del CRUD llegan en las siguientes fases.
 
 Documentación:
 
@@ -31,7 +31,7 @@ npm install
 Copy-Item .dev.vars.example .dev.vars
 ```
 
-`.dev.vars` es opcional en la Fase 0: no hay secretos obligatorios todavía. Está ignorado por Git.
+`.dev.vars` es opcional en desarrollo local: no hay secretos obligatorios todavía. Está ignorado por Git.
 
 ## Ejecutar en local
 
@@ -83,13 +83,31 @@ npm run preview
 
 - D1 y R2 se emulan automáticamente; **no necesitas `wrangler login` para desarrollar**.
 - El `database_id` placeholder de `wrangler.jsonc` es suficiente para local.
-- Cuando existan migraciones (Fase 1):
+
+### Preparar la base de datos local
 
 ```powershell
 npx wrangler d1 migrations apply blog-manager-db --local
+npm run db:seed
 ```
 
-- Para crear los recursos remotos y desplegar sí necesitas autenticarte:
+`db:seed` carga 2 blogs y 8 artículos de ejemplo con estados variados. Es idempotente: puedes ejecutarlo varias veces sin duplicar los datos.
+
+### Crear un usuario administrador local
+
+```powershell
+npm run user:create -- --email tu@email.com --name "Tu Nombre"
+```
+
+El comando pide la contraseña de forma interactiva (mínimo 12 caracteres). Para automatizarlo:
+
+```powershell
+$env:ADMIN_PASSWORD = "una-contraseña-larga"
+npm run user:create -- --email tu@email.com --name "Tu Nombre"
+Remove-Item Env:ADMIN_PASSWORD
+```
+
+Para crear los recursos remotos y desplegar sí necesitas autenticarte:
 
 ```powershell
 npx wrangler login
@@ -118,7 +136,8 @@ npm run format     # Prettier sobre el código
 | `npm run audit`       | Auditoría de dependencias de producción.        |
 | `npm run cf-typegen`  | Genera `worker-configuration.d.ts`.             |
 | `npm run bootstrap`   | Crea D1 y R2 y actualiza `wrangler.jsonc`.      |
-| `npm run user:create` | Crea el primer administrador (Fase 1).          |
+| `npm run db:seed`     | Carga datos de ejemplo en D1 local.             |
+| `npm run user:create` | Crea un usuario administrador o editor.         |
 | `npm run deploy`      | Build y despliegue a Cloudflare.                |
 
 ## Cloudflare remoto

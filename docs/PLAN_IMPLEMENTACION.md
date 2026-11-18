@@ -1,6 +1,7 @@
 # Plan de implementación — Blog Manager
 
-> **Estado:** plan actualizado con las decisiones confirmadas. Repositorio vacío (solo `.gitignore`, `LICENSE` y `docs/`).
+> **Estado:** plan actualizado con las decisiones confirmadas.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. La API y la UI del CRUD son las siguientes fases.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -135,7 +136,7 @@ Tener el esquema definitivo, migraciones reproducibles, repositorios tipados y u
   - [ ] `blogs` con `allowed_origins`.
   - [ ] `articles` con FK `ON DELETE RESTRICT`.
   - [ ] `media` con FK `ON DELETE CASCADE`.
-- [ ] Generar la migración `0001_initial.sql` con `drizzle-kit generate`.
+- [ ] Generar la migración `0000_initial.sql` con `drizzle-kit generate`.
 - [ ] Añadir índices y restricciones:
   - [ ] `UNIQUE (blog_id, slug)` en artículos.
   - [ ] `UNIQUE` en `blogs.slug`, `users.email` y `sessions.token_hash`.
@@ -159,7 +160,7 @@ Tener el esquema definitivo, migraciones reproducibles, repositorios tipados y u
   - [ ] Valida email y contraseña (mínimo 12 caracteres).
   - [ ] Inserta el usuario en D1 local o remoto.
   - [ ] No imprime el hash ni la contraseña.
-- [ ] Crear `migrations/seed.sql` con 2 blogs y 6–8 artículos de ejemplo (estados variados).
+- [ ] Crear `seeds/seed.sql` con 2 blogs y 6–8 artículos de ejemplo (estados variados).
 - [ ] Añadir tests unitarios de slugs, fechas y hashing.
 - [ ] Añadir tests de repositorios contra D1 local.
 

@@ -26,7 +26,7 @@
     "audit": "npm audit --omit=dev",
     "db:migrate:local": "wrangler d1 migrations apply blog-manager-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply blog-manager-db --remote",
-    "db:seed": "wrangler d1 execute blog-manager-db --local --file=./migrations/seed.sql",
+    "db:seed": "wrangler d1 execute blog-manager-db --local --file=./seeds/seed.sql",
     "bootstrap": "tsx scripts/bootstrap.ts",
     "user:create": "tsx scripts/create-admin.ts",
     "cf-typegen": "wrangler types"
