@@ -2,6 +2,7 @@ import type {
   ArticleDto,
   ArticleSummaryDto,
   BlogDto,
+  MediaDto,
   PublicArticleDto,
   PublicArticleSummaryDto,
   PublicBlogDto,
@@ -9,10 +10,11 @@ import type {
   UserDto,
 } from "@shared/types"
 
-import type { Article, Blog, User } from "../db/schema"
+import type { Article, Blog, Media, User } from "../db/schema"
 import type { ArticleSummary } from "../db/repositories/articlesRepository"
 import type { BlogListItem } from "../db/repositories/blogsRepository"
 import type { RecentArticle } from "../db/repositories/statsRepository"
+import { mediaUrl } from "./media"
 import { parseOrigins } from "./origins"
 
 export function toUserDto(user: User): UserDto {
@@ -102,5 +104,17 @@ export function toRecentArticleDto(article: RecentArticle): RecentArticleDto {
     ...toArticleSummaryDto(article),
     blogName: article.blogName,
     blogSlug: article.blogSlug,
+  }
+}
+
+export function toMediaDto(item: Media, origin: string): MediaDto {
+  return {
+    id: item.id,
+    blogId: item.blogId,
+    filename: item.filename,
+    mimeType: item.mimeType,
+    sizeBytes: item.sizeBytes,
+    url: new URL(mediaUrl(item.blogId, item.filename), origin).toString(),
+    createdAt: item.createdAt,
   }
 }

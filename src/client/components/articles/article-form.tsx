@@ -1,5 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { articleStatusValues, type ArticleStatus } from "@shared/constants"
+import {
+  articleStatusValues,
+  imageMimeTypeValues,
+  maxImageBytes,
+  type ArticleStatus,
+} from "@shared/constants"
 import type { ArticleDto, BlogDto } from "@shared/types"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, EyeOff, Loader2, Save, Send, Trash2 } from "lucide-react"
@@ -18,6 +23,7 @@ import {
 } from "../../lib/article-form"
 import { nowDateTimeLocal } from "../../lib/datetime"
 import { formatDateTime } from "../../lib/format"
+import { extractBlobImageUrls, replaceBlobImageUrls } from "../../lib/pending-images"
 import { countWords } from "../../lib/text"
 import { PageHeader } from "../layout/page-header"
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
@@ -60,6 +66,9 @@ const statusDescriptions: Record<ArticleStatus, string> = {
   featured: "Visible en la API pública y marcado como destacado.",
 }
 
+const MAX_IMAGE_BYTES = maxImageBytes
+const allowedImageTypes = new Set<string>(imageMimeTypeValues)
+
 type SavePayload = {
   values: ArticleFormValues
   status: ArticleStatus
@@ -77,8 +86,11 @@ export function ArticleForm({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const skipBlockRef = useRef<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const pendingImagesRef = useRef(new Map<string, File>())
+  const uploadedImagesRef = useRef(new Map<string, string>())
   const backTo = `/blogs/${blog.id}/articles`
 
   const form = useForm<ArticleFormValues>({
@@ -165,16 +177,40 @@ export function ArticleForm({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
+  useEffect(() => {
+    const pendingImages = pendingImagesRef.current
+    const uploadedImages = uploadedImagesRef.current
+
+    return () => {
+      for (const blobUrl of pendingImages.keys()) {
+        URL.revokeObjectURL(blobUrl)
+      }
+
+      pendingImages.clear()
+      uploadedImages.clear()
+    }
+  }, [])
+
   const onSubmit = form.handleSubmit((values) => {
-    mutation.mutate({ values, status: values.status })
+    void save(values, values.status)
   })
 
   function submitWithStatus(nextStatus: ArticleStatus) {
     form.setValue("status", nextStatus, { shouldDirty: true, shouldValidate: true })
 
     void form.handleSubmit((values) => {
-      mutation.mutate({ values: { ...values, status: nextStatus }, status: nextStatus })
+      void save(values, nextStatus)
     })()
+  }
+
+  async function save(values: ArticleFormValues, nextStatus: ArticleStatus) {
+    try {
+      const body = await resolvePendingImages(values.body)
+
+      mutation.mutate({ values: { ...values, body }, status: nextStatus })
+    } catch {
+      // resolvePendingImages ya muestra el error.
+    }
   }
 
   function cancel() {
@@ -185,9 +221,78 @@ export function ArticleForm({
     submitWithStatus(isVisibleStatus(status) ? "draft" : "published")
   }
 
+  async function stageImage(file: File): Promise<string> {
+    if (!allowedImageTypes.has(file.type)) {
+      toast.error("Formato no permitido. Usa JPEG, PNG, WebP, GIF o AVIF.")
+      throw new Error("Formato de imagen no permitido")
+    }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("La imagen no puede superar los 5 MB.")
+      throw new Error("La imagen es demasiado grande")
+    }
+
+    const blobUrl = URL.createObjectURL(file)
+    pendingImagesRef.current.set(blobUrl, file)
+
+    return blobUrl
+  }
+
+  async function resolvePendingImages(markdown: string): Promise<string> {
+    const blobUrls = extractBlobImageUrls(markdown)
+
+    if (blobUrls.length === 0) {
+      return markdown
+    }
+
+    setIsUploading(true)
+    const toastId = toast.loading(blobUrls.length === 1 ? "Subiendo imagen…" : "Subiendo imágenes…")
+
+    try {
+      const replacements = new Map<string, string>()
+
+      await Promise.all(
+        blobUrls.map(async (blobUrl) => {
+          const alreadyUploaded = uploadedImagesRef.current.get(blobUrl)
+
+          if (alreadyUploaded) {
+            replacements.set(blobUrl, alreadyUploaded)
+            return
+          }
+
+          const file = pendingImagesRef.current.get(blobUrl)
+
+          if (!file) {
+            throw new Error("No se encontró una de las imágenes pendientes")
+          }
+
+          const response = await api.uploadImage(blog.id, file)
+
+          uploadedImagesRef.current.set(blobUrl, response.data.url)
+          replacements.set(blobUrl, response.data.url)
+        }),
+      )
+
+      toast.success(blobUrls.length === 1 ? "Imagen subida" : "Imágenes subidas", {
+        id: toastId,
+      })
+
+      return replaceBlobImageUrls(markdown, replacements)
+    } catch (uploadError) {
+      toast.error(
+        uploadError instanceof Error ? uploadError.message : "No se pudieron subir las imágenes",
+        { id: toastId },
+      )
+      throw uploadError
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
   const error = mutation.error instanceof ApiError ? mutation.error : null
   const words = countWords(body)
   const visible = isVisibleStatus(status)
+  const isBusy = mutation.isPending || isUploading
 
   return (
     <Form {...form}>
@@ -205,21 +310,12 @@ export function ArticleForm({
               <Button type="button" variant="ghost" onClick={cancel}>
                 Cancelar
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={toggleVisibility}
-                disabled={mutation.isPending}
-              >
+              <Button type="button" variant="outline" onClick={toggleVisibility} disabled={isBusy}>
                 {visible ? <EyeOff className="size-4" /> : <Send className="size-4" />}
                 {visible ? "Despublicar" : "Publicar"}
               </Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Save className="size-4" />
-                )}
+              <Button type="submit" disabled={isBusy}>
+                {isBusy ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 {article ? "Guardar" : "Crear artículo"}
               </Button>
             </>
@@ -293,6 +389,7 @@ export function ArticleForm({
                         id="article-body"
                         value={field.value}
                         onChange={field.onChange}
+                        onUploadImage={stageImage}
                       />
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                         <span>
@@ -459,7 +556,12 @@ export function ArticleForm({
 
         <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
-            {isDirty ? (
+            {isUploading ? (
+              <span className="inline-flex items-center gap-2 text-brand">
+                <Loader2 className="size-3.5 animate-spin" />
+                Subiendo imágenes…
+              </span>
+            ) : isDirty ? (
               <span className="inline-flex items-center gap-2 text-warning">
                 <span className="size-1.5 rounded-full bg-warning" />
                 Tienes cambios sin guardar.
@@ -474,12 +576,8 @@ export function ArticleForm({
             <Button type="button" variant="ghost" onClick={cancel}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
+            <Button type="submit" disabled={isBusy}>
+              {isBusy ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               {article ? "Guardar cambios" : "Crear artículo"}
             </Button>
           </div>

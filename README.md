@@ -10,7 +10,7 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 5 — Editor de artículos.** La SPA, el Worker, la API HTTP, el login, el shell responsive, el panel, el CRUD de blogs y el editor de artículos están listos. La subida de imágenes a R2 llega en la siguiente fase.
+**Fase 6 — Imágenes en R2.** La SPA, el Worker, la API HTTP, el login, el shell responsive, el panel, el CRUD de blogs, el editor de artículos y la subida de imágenes a R2 están listos.
 
 Documentación:
 
@@ -104,6 +104,14 @@ npm run db:seed
 
 `db:seed` carga 2 blogs y 8 artículos de ejemplo con estados variados. Es idempotente: puedes ejecutarlo varias veces sin duplicar los datos.
 
+### Imágenes en R2
+
+- Formatos: JPEG, PNG, WebP, GIF y AVIF. Tamaño máximo: 5 MB.
+- Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el markdown.
+- Cada imagen pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de una imagen de otro artículo.
+- Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes).
+- En local los objetos se guardan en `.wrangler/state/v3/r2`; al borrar un artículo o un blog sin artículos se limpian también sus imágenes.
+
 ### Crear un usuario administrador local
 
 ```powershell
@@ -147,7 +155,7 @@ Rutas principales:
 | `/blogs/:blogId/articles/:articleId` | Edición de un artículo                  |
 | `/blogs/:blogId/settings`            | Ajustes del blog                        |
 
-El editor de artículos usa MDXEditor con carga diferida y guarda el contenido en markdown. La subida de imágenes a R2 se implementa en la Fase 6.
+El editor de artículos usa MDXEditor con carga diferida y guarda el contenido en markdown. Las imágenes se previsualizan en local y se suben a R2 al guardar el artículo.
 
 ## API
 

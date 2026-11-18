@@ -6,6 +6,7 @@ import { csrfProtection } from "./middleware/csrf"
 import { requestContext } from "./middleware/requestContext"
 import { adminRoutes } from "./routes/admin"
 import { authRoutes } from "./routes/auth"
+import { mediaRoutes } from "./routes/media"
 import { publicRoutes } from "./routes/public"
 import type { AppEnv } from "./types"
 
@@ -28,6 +29,7 @@ app.get("/api/health", (c) => {
 app.route("/api/auth", authRoutes)
 app.route("/api/admin", adminRoutes)
 app.route("/api/public/v1", publicRoutes)
+app.route("/media", mediaRoutes)
 
 app.notFound((c) => {
   const { pathname } = new URL(c.req.url)

@@ -11,8 +11,15 @@ import { Hono } from "hono"
 import { getDb } from "../db/client"
 import { getArticleByBlogAndId, listArticlesByBlog } from "../db/repositories/articlesRepository"
 import { countArticlesForBlog, listBlogs } from "../db/repositories/blogsRepository"
+import { listMediaKeysByBlog } from "../db/repositories/mediaRepository"
 import { getDashboardStats, getRecentArticles } from "../db/repositories/statsRepository"
-import { toArticleDto, toArticleSummaryDto, toBlogDto, toRecentArticleDto } from "../lib/dto"
+import {
+  toArticleDto,
+  toArticleSummaryDto,
+  toBlogDto,
+  toMediaDto,
+  toRecentArticleDto,
+} from "../lib/dto"
 import { ApiError } from "../lib/errors"
 import { parseJson, parseQuery } from "../lib/validate"
 import { requireAdmin, requireAuth } from "../middleware/auth"
@@ -27,6 +34,7 @@ import {
   getBlogOrThrow,
   updateBlogFromInput,
 } from "../services/blogService"
+import { deleteBlogImage, deleteMediaObjects, storeImage } from "../services/mediaService"
 import type { AppEnv } from "../types"
 
 const adminRoutes = new Hono<AppEnv>()
@@ -73,7 +81,15 @@ adminRoutes.patch("/blogs/:blogId", requireAdmin, async (c) => {
 })
 
 adminRoutes.delete("/blogs/:blogId", requireAdmin, async (c) => {
-  await deleteBlogOrThrow(getDb(c.env), c.req.param("blogId"))
+  const db = getDb(c.env)
+  const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  const mediaKeys = await listMediaKeysByBlog(db, blog.id)
+
+  await deleteBlogOrThrow(db, blog.id)
+
+  if (mediaKeys.length > 0) {
+    c.executionCtx.waitUntil(deleteMediaObjects(c.env.MEDIA, mediaKeys))
+  }
 
   return c.body(null, 204)
 })
@@ -98,7 +114,7 @@ adminRoutes.post("/blogs/:blogId/articles", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
   const input = await parseJson(c, articleCreateSchema)
-  const article = await createArticleForBlog(db, blog.id, input)
+  const article = await createArticleForBlog(db, blog.id, input, c.env.MEDIA)
 
   return c.json({ data: toArticleDto(article) }, 201)
 })
@@ -119,7 +135,13 @@ adminRoutes.patch("/blogs/:blogId/articles/:articleId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
   const input = await parseJson(c, articleUpdateSchema)
-  const article = await updateArticleForBlog(db, blog.id, c.req.param("articleId"), input)
+  const article = await updateArticleForBlog(
+    db,
+    blog.id,
+    c.req.param("articleId"),
+    input,
+    c.env.MEDIA,
+  )
 
   return c.json({ data: toArticleDto(article) })
 })
@@ -128,7 +150,38 @@ adminRoutes.delete("/blogs/:blogId/articles/:articleId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
 
-  await deleteArticleForBlog(db, blog.id, c.req.param("articleId"))
+  await deleteArticleForBlog(db, blog.id, c.req.param("articleId"), c.env.MEDIA)
+
+  return c.body(null, 204)
+})
+
+adminRoutes.post("/blogs/:blogId/media", async (c) => {
+  const db = getDb(c.env)
+  const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  let form: FormData
+
+  try {
+    form = await c.req.formData()
+  } catch {
+    throw new ApiError(400, "INVALID_FORM_DATA", "El cuerpo debe ser multipart/form-data")
+  }
+
+  const file = form.get("file")
+
+  if (!(file instanceof File)) {
+    throw new ApiError(400, "FILE_REQUIRED", "Adjunta una imagen en el campo «file»")
+  }
+
+  const media = await storeImage(c.env.MEDIA, db, blog.id, file)
+
+  return c.json({ data: toMediaDto(media, new URL(c.req.url).origin) }, 201)
+})
+
+adminRoutes.delete("/blogs/:blogId/media/:mediaId", requireAdmin, async (c) => {
+  const db = getDb(c.env)
+  const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+
+  await deleteBlogImage(c.env.MEDIA, db, blog.id, c.req.param("mediaId"))
 
   return c.body(null, 204)
 })

@@ -2,10 +2,12 @@ import { articleStatusValues, type ArticleStatus } from "@shared/constants"
 import type { ArticleSummaryDto, PaginatedResponse } from "@shared/types"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
+  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   EyeOff,
   FileText,
+  Filter,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -247,8 +249,11 @@ export function BlogArticlesPage() {
               setPage(1)
             }}
           >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Estado" />
+            <SelectTrigger className="w-[200px]" aria-label="Filtrar por estado">
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <Filter className="size-3.5 shrink-0 text-muted-foreground" />
+                <SelectValue placeholder="Estado" />
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los estados</SelectItem>
@@ -267,8 +272,11 @@ export function BlogArticlesPage() {
               setPage(1)
             }}
           >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Ordenar" />
+            <SelectTrigger className="w-[190px]" aria-label="Ordenar artículos">
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                <SelectValue placeholder="Ordenar" />
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="updated_at">Actualizados</SelectItem>
