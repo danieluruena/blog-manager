@@ -107,13 +107,17 @@ export const media = sqliteTable(
     blogId: text("blog_id")
       .notNull()
       .references(() => blogs.id, { onDelete: "cascade" }),
+    articleId: text("article_id").references(() => articles.id, { onDelete: "cascade" }),
     r2Key: text("r2_key").notNull().unique(),
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     createdAt: text("created_at").notNull(),
   },
-  (table) => [index("idx_media_blog").on(table.blogId)],
+  (table) => [
+    index("idx_media_blog").on(table.blogId),
+    index("idx_media_article").on(table.articleId),
+  ],
 )
 
 export type User = typeof users.$inferSelect

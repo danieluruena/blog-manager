@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, inArray } from "drizzle-orm"
 
 import type { Database } from "../client"
 import { media, type Media, type NewMedia } from "../schema"
@@ -37,4 +37,50 @@ export async function deleteMediaById(db: Database, id: string): Promise<boolean
   const rows = await db.delete(media).where(eq(media.id, id)).returning({ id: media.id })
 
   return rows.length > 0
+}
+
+export async function findMediaByR2Keys(
+  db: Database,
+  blogId: string,
+  keys: string[],
+): Promise<Media[]> {
+  if (keys.length === 0) {
+    return []
+  }
+
+  return db
+    .select()
+    .from(media)
+    .where(and(eq(media.blogId, blogId), inArray(media.r2Key, keys)))
+}
+
+export async function assignMediaToArticle(
+  db: Database,
+  articleId: string,
+  ids: string[],
+): Promise<void> {
+  if (ids.length === 0) {
+    return
+  }
+
+  await db.update(media).set({ articleId }).where(inArray(media.id, ids))
+}
+
+export async function listMediaByArticle(
+  db: Database,
+  blogId: string,
+  articleId: string,
+): Promise<Media[]> {
+  return db
+    .select()
+    .from(media)
+    .where(and(eq(media.blogId, blogId), eq(media.articleId, articleId)))
+}
+
+export async function deleteMediaByIds(db: Database, ids: string[]): Promise<void> {
+  if (ids.length === 0) {
+    return
+  }
+
+  await db.delete(media).where(inArray(media.id, ids))
 }

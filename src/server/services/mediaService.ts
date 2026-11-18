@@ -1,11 +1,20 @@
 import type { Database } from "../db/client"
-import { createMedia, deleteMediaById, findMediaById } from "../db/repositories/mediaRepository"
+import {
+  assignMediaToArticle,
+  createMedia,
+  deleteMediaById,
+  deleteMediaByIds,
+  findMediaById,
+  findMediaByR2Keys,
+  listMediaByArticle,
+} from "../db/repositories/mediaRepository"
 import type { Media } from "../db/schema"
 import { nowIso } from "../lib/dates"
 import { ApiError } from "../lib/errors"
 import {
   detectImageMime,
   extensionForMime,
+  extractMediaFilenames,
   isAllowedImageMime,
   MAX_IMAGE_BYTES,
   mediaKey,
@@ -93,4 +102,90 @@ export async function deleteMediaObjects(bucket: R2Bucket, keys: string[]): Prom
   for (let index = 0; index < keys.length; index += 1000) {
     await bucket.delete(keys.slice(index, index + 1000))
   }
+}
+
+/**
+ * Devuelve las filas de `media` referenciadas en el markdown, sin validar
+ * a qué artículo pertenecen.
+ */
+export async function findReferencedMedia(
+  db: Database,
+  blogId: string,
+  body: string,
+): Promise<Media[]> {
+  const filenames = extractMediaFilenames(body, blogId)
+
+  return findMediaByR2Keys(
+    db,
+    blogId,
+    filenames.map((filename) => mediaKey(blogId, filename)),
+  )
+}
+
+/**
+ * Devuelve las filas de `media` referenciadas en el markdown. Si alguna
+ * pertenece a otro artículo, rechaza el guardado para no compartir objetos.
+ */
+export async function resolveReferencedMedia(
+  db: Database,
+  blogId: string,
+  articleId: string | null,
+  body: string,
+): Promise<Media[]> {
+  const rows = await findReferencedMedia(db, blogId, body)
+
+  const shared = rows.find((item) => item.articleId && item.articleId !== articleId)
+
+  if (shared) {
+    throw new ApiError(
+      409,
+      "MEDIA_IN_OTHER_ARTICLE",
+      "Una imagen del artículo pertenece a otro artículo. Vuelve a subirla para usarla en este.",
+    )
+  }
+
+  return rows
+}
+
+/**
+ * Asigna al artículo las imágenes indicadas y elimina de R2 y D1 las que
+ * ya no aparecen en el markdown (`keep`).
+ */
+export async function syncArticleMedia(
+  bucket: R2Bucket,
+  db: Database,
+  blogId: string,
+  articleId: string,
+  media: { assign: Media[]; keep: Media[] },
+): Promise<void> {
+  const assignIds = new Set(media.assign.map((item) => item.id))
+  const keepIds = new Set(media.keep.map((item) => item.id))
+
+  await assignMediaToArticle(db, articleId, [...assignIds])
+
+  const current = await listMediaByArticle(db, blogId, articleId)
+  const removed = current.filter((item) => !keepIds.has(item.id))
+
+  if (removed.length === 0) {
+    return
+  }
+
+  await deleteMediaObjects(
+    bucket,
+    removed.map((item) => item.r2Key),
+  )
+  await deleteMediaByIds(
+    db,
+    removed.map((item) => item.id),
+  )
+}
+
+export async function listArticleMediaKeys(
+  db: Database,
+  blogId: string,
+  articleId: string,
+): Promise<string[]> {
+  const items = await listMediaByArticle(db, blogId, articleId)
+
+  return items.map((item) => item.r2Key)
 }

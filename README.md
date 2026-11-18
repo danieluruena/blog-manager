@@ -108,8 +108,9 @@ npm run db:seed
 
 - Formatos: JPEG, PNG, WebP, GIF y AVIF. Tamaño máximo: 5 MB.
 - Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el markdown.
+- Cada imagen pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de una imagen de otro artículo.
 - Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes).
-- En local los objetos se guardan en `.wrangler/state/v3/r2`; al borrar un blog sin artículos se eliminan también sus imágenes.
+- En local los objetos se guardan en `.wrangler/state/v3/r2`; al borrar un artículo o un blog sin artículos se limpian también sus imágenes.
 
 ### Crear un usuario administrador local
 

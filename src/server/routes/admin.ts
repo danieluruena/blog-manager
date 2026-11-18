@@ -114,7 +114,7 @@ adminRoutes.post("/blogs/:blogId/articles", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
   const input = await parseJson(c, articleCreateSchema)
-  const article = await createArticleForBlog(db, blog.id, input)
+  const article = await createArticleForBlog(db, blog.id, input, c.env.MEDIA)
 
   return c.json({ data: toArticleDto(article) }, 201)
 })
@@ -135,7 +135,13 @@ adminRoutes.patch("/blogs/:blogId/articles/:articleId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
   const input = await parseJson(c, articleUpdateSchema)
-  const article = await updateArticleForBlog(db, blog.id, c.req.param("articleId"), input)
+  const article = await updateArticleForBlog(
+    db,
+    blog.id,
+    c.req.param("articleId"),
+    input,
+    c.env.MEDIA,
+  )
 
   return c.json({ data: toArticleDto(article) })
 })
@@ -144,7 +150,7 @@ adminRoutes.delete("/blogs/:blogId/articles/:articleId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
 
-  await deleteArticleForBlog(db, blog.id, c.req.param("articleId"))
+  await deleteArticleForBlog(db, blog.id, c.req.param("articleId"), c.env.MEDIA)
 
   return c.body(null, 204)
 })

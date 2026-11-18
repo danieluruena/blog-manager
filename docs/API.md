@@ -250,7 +250,7 @@ Límites y formatos:
 
 La entrega usa `Cache-Control: public, max-age=31536000, immutable`, `ETag` (responde `304` con `If-None-Match`), `Content-Type` del objeto y `X-Content-Type-Options: nosniff`.
 
-Al eliminar un blog sin artículos se borran también sus filas de `media` y sus objetos de R2 en segundo plano.
+Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes presentes en el markdown quedan asociadas a él; las que se han quitado se eliminan de R2 y D1. Una imagen pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus imágenes, y al eliminar un blog sin artículos se limpian las que hayan quedado sin asignar.
 
 ### Estadísticas
 

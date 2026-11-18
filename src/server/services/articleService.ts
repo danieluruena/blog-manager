@@ -1,7 +1,7 @@
 import type { ArticleCreateInput, ArticleUpdateInput } from "@shared/schemas"
 
 import type { Database } from "../db/client"
-import type { Article, ArticleStatus } from "../db/schema"
+import type { Article, ArticleStatus, Media } from "../db/schema"
 import {
   articleSlugExists,
   createArticle,
@@ -9,10 +9,18 @@ import {
   getArticleByBlogAndId,
   updateArticle,
 } from "../db/repositories/articlesRepository"
+import { deleteMediaByIds } from "../db/repositories/mediaRepository"
 import { normalizeIso, nowIso } from "../lib/dates"
 import { ApiError } from "../lib/errors"
 import { findAvailableSlug, toSlug } from "../lib/slug"
 import { getBlogOrThrow } from "./blogService"
+import {
+  deleteMediaObjects,
+  findReferencedMedia,
+  listArticleMediaKeys,
+  resolveReferencedMedia,
+  syncArticleMedia,
+} from "./mediaService"
 
 function isVisibleStatus(status: ArticleStatus): boolean {
   return status === "published" || status === "featured"
@@ -48,6 +56,7 @@ export async function createArticleForBlog(
   db: Database,
   blogId: string,
   input: ArticleCreateInput,
+  bucket: R2Bucket,
 ): Promise<Article> {
   await getBlogOrThrow(db, blogId)
 
@@ -61,8 +70,9 @@ export async function createArticleForBlog(
     ? baseSlug
     : await findAvailableSlug(baseSlug, (candidate) => articleSlugExists(db, blogId, candidate))
   const timestamp = nowIso()
+  const referencedMedia = await resolveReferencedMedia(db, blogId, null, input.body)
 
-  return createArticle(db, {
+  const article = await createArticle(db, {
     id: crypto.randomUUID(),
     blogId,
     title: input.title,
@@ -75,6 +85,13 @@ export async function createArticleForBlog(
     createdAt: timestamp,
     updatedAt: timestamp,
   })
+
+  await syncMediaSafely(bucket, db, blogId, article.id, {
+    assign: referencedMedia,
+    keep: referencedMedia,
+  })
+
+  return article
 }
 
 export async function updateArticleForBlog(
@@ -82,6 +99,7 @@ export async function updateArticleForBlog(
   blogId: string,
   articleId: string,
   input: ArticleUpdateInput,
+  bucket: R2Bucket,
 ): Promise<Article> {
   const article = await getArticleByBlogAndId(db, blogId, articleId)
 
@@ -96,6 +114,13 @@ export async function updateArticleForBlog(
   }
 
   const status = input.status ?? article.status
+  const previousMedia =
+    input.body !== undefined ? await findReferencedMedia(db, blogId, article.body) : ([] as Media[])
+  const referencedMedia =
+    input.body !== undefined
+      ? await resolveReferencedMedia(db, blogId, article.id, input.body)
+      : null
+
   const updated = await updateArticle(db, blogId, articleId, {
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.slug !== undefined ? { slug: input.slug } : {}),
@@ -113,6 +138,17 @@ export async function updateArticleForBlog(
     throw new ApiError(404, "NOT_FOUND", "Artículo no encontrado")
   }
 
+  if (referencedMedia) {
+    const assignablePrevious = previousMedia.filter(
+      (item) => !item.articleId || item.articleId === article.id,
+    )
+
+    await syncMediaSafely(bucket, db, blogId, article.id, {
+      assign: [...assignablePrevious, ...referencedMedia],
+      keep: referencedMedia,
+    })
+  }
+
   return updated
 }
 
@@ -120,10 +156,47 @@ export async function deleteArticleForBlog(
   db: Database,
   blogId: string,
   articleId: string,
+  bucket: R2Bucket,
 ): Promise<void> {
-  const deleted = await deleteArticle(db, blogId, articleId)
+  const article = await getArticleByBlogAndId(db, blogId, articleId)
+
+  if (!article) {
+    throw new ApiError(404, "NOT_FOUND", "Artículo no encontrado")
+  }
+
+  const mediaKeys = await listArticleMediaKeys(db, blogId, article.id)
+  const bodyMedia = await findReferencedMedia(db, blogId, article.body)
+  const unassignedMedia = bodyMedia.filter((item) => !item.articleId)
+  const keysToDelete = [...new Set([...mediaKeys, ...unassignedMedia.map((item) => item.r2Key)])]
+  const deleted = await deleteArticle(db, blogId, article.id)
 
   if (!deleted) {
     throw new ApiError(404, "NOT_FOUND", "Artículo no encontrado")
+  }
+
+  if (keysToDelete.length > 0) {
+    try {
+      await deleteMediaObjects(bucket, keysToDelete)
+      await deleteMediaByIds(
+        db,
+        unassignedMedia.map((item) => item.id),
+      )
+    } catch (error) {
+      console.error("No se pudieron borrar las imágenes del artículo", error)
+    }
+  }
+}
+
+async function syncMediaSafely(
+  bucket: R2Bucket,
+  db: Database,
+  blogId: string,
+  articleId: string,
+  media: { assign: Media[]; keep: Media[] },
+): Promise<void> {
+  try {
+    await syncArticleMedia(bucket, db, blogId, articleId, media)
+  } catch (error) {
+    console.error("No se pudieron sincronizar las imágenes del artículo", error)
   }
 }

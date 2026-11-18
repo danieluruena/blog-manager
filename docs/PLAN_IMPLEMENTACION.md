@@ -400,6 +400,8 @@ Subir imágenes desde el editor y servirlas con caché.
   - [x] Manejo de `paste` para imágenes del portapapeles.
   - [x] Manejo de `drop` para arrastrar archivos.
   - [x] Previsualización local con `blob:` y subida solo al guardar las imágenes que sigan en el artículo.
+  - [x] Cada imagen se asocia a un artículo; al guardar se eliminan de R2 y D1 las retiradas.
+  - [x] Impedir reutilizar una imagen de otro artículo (objetos independientes por subida).
   - [x] Placeholder/progreso durante la subida.
   - [x] Inserción de `![alt](url)` en la posición del cursor.
   - [x] Toast de error y reintento.
