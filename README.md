@@ -22,28 +22,86 @@ Documentación:
 
 - Node.js 22 o superior.
 - npm 11 o superior.
-- Cuenta de Cloudflare (para crear D1/R2 y desplegar).
+- Cuenta de Cloudflare (solo para crear D1/R2 remotos y desplegar).
 
 ## Instalación
 
-```bash
-npm install
-cp .dev.vars.example .dev.vars
-```
-
-En Windows (PowerShell):
-
 ```powershell
+npm install
 Copy-Item .dev.vars.example .dev.vars
 ```
 
-## Desarrollo
+`.dev.vars` es opcional en la Fase 0: no hay secretos obligatorios todavía. Está ignorado por Git.
 
-```bash
+## Ejecutar en local
+
+En este proyecto el **frontend y el backend se ejecutan juntos** gracias al plugin de Vite para Cloudflare: el mismo servidor de desarrollo sirve la SPA y expone el Worker en `/api/*`. No hace falta levantar dos terminales ni configurar un proxy.
+
+### Opción A — Desarrollo (recomendada)
+
+```powershell
 npm run dev
 ```
 
-Vite arranca la SPA y el Worker con el plugin de Cloudflare. La API de salud está en `http://localhost:5173/api/health`.
+- **SPA:** http://localhost:5173
+- **API:** http://localhost:5173/api/health
+- **HMR:** los cambios en React se reflejan sin recargar; los cambios en el Worker reinician el runtime local.
+- **D1 y R2:** se emulan localmente en `.wrangler/state`.
+
+`npm run dev` ejecuta antes `wrangler types` para generar `worker-configuration.d.ts`.
+
+### Opción B — Worker/API con el build
+
+Útil para probar el backend con los bindings locales y el último build del frontend:
+
+```powershell
+npm run build
+npx wrangler dev --port 8787
+```
+
+- **App + API:** http://localhost:8787
+- **API:** http://localhost:8787/api/health
+
+`wrangler dev` reutiliza el build de `dist/`; si cambias el frontend, vuelve a ejecutar `npm run build`.
+
+### Opción C — Build de producción en local
+
+```powershell
+npm run build
+npm run preview
+```
+
+- **App + API:** http://localhost:4173
+
+`npm run preview` sirve el build en el runtime de Workers, muy parecido a producción.
+
+### Detener los servidores
+
+`Ctrl + C` en la terminal donde esté corriendo el comando.
+
+## D1 y R2 en local
+
+- D1 y R2 se emulan automáticamente; **no necesitas `wrangler login` para desarrollar**.
+- El `database_id` placeholder de `wrangler.jsonc` es suficiente para local.
+- Cuando existan migraciones (Fase 1):
+
+```powershell
+npx wrangler d1 migrations apply blog-manager-db --local
+```
+
+- Para crear los recursos remotos y desplegar sí necesitas autenticarte:
+
+```powershell
+npx wrangler login
+```
+
+## Tests y calidad
+
+```powershell
+npm run test       # tests dentro del runtime de Workers
+npm run check      # typecheck + lint + tests + build
+npm run format     # Prettier sobre el código
+```
 
 ## Scripts
 
@@ -58,31 +116,38 @@ Vite arranca la SPA y el Worker con el plugin de Cloudflare. La API de salud est
 | `npm run test`        | Tests con Vitest dentro del runtime de Workers. |
 | `npm run check`       | Typecheck + lint + tests + build.               |
 | `npm run audit`       | Auditoría de dependencias de producción.        |
+| `npm run cf-typegen`  | Genera `worker-configuration.d.ts`.             |
 | `npm run bootstrap`   | Crea D1 y R2 y actualiza `wrangler.jsonc`.      |
 | `npm run user:create` | Crea el primer administrador (Fase 1).          |
 | `npm run deploy`      | Build y despliegue a Cloudflare.                |
 
-## Cloudflare
+## Cloudflare remoto
 
 `worker-configuration.d.ts` se genera automáticamente con `npm run cf-typegen` (también se ejecuta antes de `dev`, `build`, `test` y `typecheck`). No se versiona.
 
 El bootstrap requiere autenticación de Wrangler:
 
-```bash
+```powershell
 npx wrangler login
 npm run bootstrap
-npx wrangler d1 migrations apply blog-manager-db --local
-npm run dev
 ```
 
 El `database_id` de `wrangler.jsonc` es un placeholder hasta ejecutar el bootstrap. Para producción:
 
-```bash
+```powershell
 npm run bootstrap
 npx wrangler d1 migrations apply blog-manager-db --remote
 npm run user:create -- --email tu@email.com --name "Tu Nombre" --remote
 npm run deploy
 ```
+
+## Problemas comunes
+
+- **Puerto ocupado:** Vite elige el siguiente puerto (5174, 5175...). Para fijarlo: `npm run dev -- --port 5174`.
+- **`worker-configuration.d.ts` no existe:** ejecuta `npm run cf-typegen`; también se genera solo antes de `dev`, `build`, `test` y `typecheck`.
+- **`No such table`:** aplica las migraciones locales cuando existan: `npx wrangler d1 migrations apply blog-manager-db --local`.
+- **No responde `/api/health`:** comprueba que el servidor de Vite sigue activo y que estás usando el puerto correcto.
+- **Quiero probar endpoints del backend:** usa la Opción B y llama a `http://localhost:8787/api/...`.
 
 ## Estructura
 
