@@ -24,7 +24,23 @@ import {
   toolbarPlugin,
   UndoRedo,
 } from "@mdxeditor/editor"
+import type { Translation } from "@mdxeditor/editor"
 import "@mdxeditor/editor/style.css"
+
+const blockTypeTranslations: Record<string, string> = {
+  "toolbar.blockTypes.paragraph": "Párrafo",
+  "toolbar.blockTypes.quote": "Cita",
+  "toolbar.blockTypeSelect.placeholder": "Estilo",
+  "toolbar.blockTypeSelect.selectBlockTypeTooltip": "Seleccionar estilo de texto",
+}
+
+const translateEditor: Translation = (key, defaultValue, interpolations) => {
+  if (key === "toolbar.blockTypes.heading") {
+    return `Título ${interpolations?.level ?? ""}`.trim()
+  }
+
+  return blockTypeTranslations[key] ?? defaultValue
+}
 
 export type MdxEditorProps = {
   markdown: string
@@ -42,6 +58,7 @@ export function MdxEditor({ markdown, onChange, onUploadImage, readOnly }: MdxEd
       placeholder="Escribe el contenido del artículo en markdown…"
       className="blog-editor dark-theme dark-editor"
       contentEditableClassName="blog-editor-content"
+      translation={translateEditor}
       plugins={[
         headingsPlugin(),
         listsPlugin(),

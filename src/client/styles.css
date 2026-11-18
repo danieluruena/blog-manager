@@ -134,6 +134,17 @@
   fill: var(--color-ink);
 }
 
+.blog-editor [class*="_selectItem_"][data-highlighted] {
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--color-ink) 10%, transparent);
+}
+
+.blog-editor [class*="_selectItem_"][data-state="checked"] {
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--color-brand) 14%, transparent);
+  color: var(--color-brand);
+}
+
 .blog-editor .blog-editor-content {
   min-height: 28rem;
   padding: 1.25rem 1.5rem 2rem;
