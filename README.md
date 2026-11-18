@@ -2,7 +2,7 @@
 
 Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios artículos y la API pública está aislada por blog.
 
-- **Frontend:** React + Vite + TypeScript + Tailwind CSS.
+- **Frontend:** React + Vite + TypeScript + Tailwind CSS + MDXEditor.
 - **Backend:** Hono + TypeScript sobre Cloudflare Workers.
 - **Datos:** Cloudflare D1.
 - **Imágenes:** Cloudflare R2.
@@ -10,7 +10,7 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 4 — CRUD de blogs.** La SPA, el Worker, la API HTTP, el login, el shell responsive, el panel y el CRUD completo de blogs están listos. El editor markdown y la subida de imágenes llegan en las siguientes fases.
+**Fase 5 — Editor de artículos.** La SPA, el Worker, la API HTTP, el login, el shell responsive, el panel, el CRUD de blogs y el editor de artículos están listos. La subida de imágenes a R2 llega en la siguiente fase.
 
 Documentación:
 
@@ -137,15 +137,17 @@ npx wrangler secret put AUTH_PEPPER
 
 Rutas principales:
 
-| Ruta                      | Pantalla                                |
-| ------------------------- | --------------------------------------- |
-| `/login`                  | Inicio de sesión                        |
-| `/`                       | Panel con métricas y actividad reciente |
-| `/blogs`                  | Lista y CRUD de blogs                   |
-| `/blogs/:blogId/articles` | Artículos del blog (solo lectura)       |
-| `/blogs/:blogId/settings` | Ajustes del blog                        |
+| Ruta                                 | Pantalla                                |
+| ------------------------------------ | --------------------------------------- |
+| `/login`                             | Inicio de sesión                        |
+| `/`                                  | Panel con métricas y actividad reciente |
+| `/blogs`                             | Lista y CRUD de blogs                   |
+| `/blogs/:blogId/articles`            | Lista y filtros de artículos            |
+| `/blogs/:blogId/articles/new`        | Editor de un artículo nuevo             |
+| `/blogs/:blogId/articles/:articleId` | Edición de un artículo                  |
+| `/blogs/:blogId/settings`            | Ajustes del blog                        |
 
-El editor markdown y la subida de imágenes se implementan en las fases 5 y 6.
+El editor de artículos usa MDXEditor con carga diferida y guarda el contenido en markdown. La subida de imágenes a R2 se implementa en la Fase 6.
 
 ## API
 
