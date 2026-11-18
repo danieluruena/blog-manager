@@ -27,11 +27,27 @@ import {
 import type { Translation } from "@mdxeditor/editor"
 import "@mdxeditor/editor/style.css"
 
-const blockTypeTranslations: Record<string, string> = {
+const editorTranslations: Record<string, string> = {
   "toolbar.blockTypes.paragraph": "Párrafo",
   "toolbar.blockTypes.quote": "Cita",
   "toolbar.blockTypeSelect.placeholder": "Estilo",
   "toolbar.blockTypeSelect.selectBlockTypeTooltip": "Seleccionar estilo de texto",
+  "uploadImage.dialogTitle": "Insertar imagen",
+  "uploadImage.dialogDescription":
+    "Inserta una imagen desde una URL o súbela desde tu dispositivo.",
+  "uploadImage.dialogDescriptionNoUpload": "Inserta una imagen desde una URL.",
+  "uploadImage.uploadInstructions": "Sube una imagen desde tu dispositivo:",
+  "uploadImage.addViaUrlInstructions": "O añade una imagen desde una URL:",
+  "uploadImage.addViaUrlInstructionsNoUpload": "Añade una imagen desde una URL:",
+  "uploadImage.autoCompletePlaceholder": "Selecciona o pega la URL de la imagen",
+  "uploadImage.alt": "Texto alternativo:",
+  "uploadImage.title": "Título:",
+  "uploadImage.width": "Ancho:",
+  "uploadImage.height": "Alto:",
+  "uploadImage.uploading": "Subiendo imagen…",
+  "uploadImage.uploadError": "No se pudo subir la imagen. Inténtalo de nuevo.",
+  "dialogControls.save": "Guardar",
+  "dialogControls.cancel": "Cancelar",
 }
 
 const translateEditor: Translation = (key, defaultValue, interpolations) => {
@@ -39,7 +55,7 @@ const translateEditor: Translation = (key, defaultValue, interpolations) => {
     return `Título ${interpolations?.level ?? ""}`.trim()
   }
 
-  return blockTypeTranslations[key] ?? defaultValue
+  return editorTranslations[key] ?? defaultValue
 }
 
 export type MdxEditorProps = {
