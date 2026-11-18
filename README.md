@@ -10,7 +10,7 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 3 — Frontend base.** La SPA, el Worker, el esquema D1, la API HTTP, el login, el shell responsive, el panel y la lista de blogs están listos. El CRUD visual de blogs y el editor markdown llegan en las siguientes fases.
+**Fase 4 — CRUD de blogs.** La SPA, el Worker, la API HTTP, el login, el shell responsive, el panel y el CRUD completo de blogs están listos. El editor markdown y la subida de imágenes llegan en las siguientes fases.
 
 Documentación:
 
@@ -137,15 +137,15 @@ npx wrangler secret put AUTH_PEPPER
 
 Rutas principales:
 
-| Ruta                      | Pantalla                                   |
-| ------------------------- | ------------------------------------------ |
-| `/login`                  | Inicio de sesión                           |
-| `/`                       | Panel con métricas y actividad reciente    |
-| `/blogs`                  | Lista de blogs (solo lectura en la Fase 3) |
-| `/blogs/:blogId/articles` | Artículos del blog (solo lectura)          |
-| `/blogs/:blogId/settings` | Ajustes del blog (Fase 4)                  |
+| Ruta                      | Pantalla                                |
+| ------------------------- | --------------------------------------- |
+| `/login`                  | Inicio de sesión                        |
+| `/`                       | Panel con métricas y actividad reciente |
+| `/blogs`                  | Lista y CRUD de blogs                   |
+| `/blogs/:blogId/articles` | Artículos del blog (solo lectura)       |
+| `/blogs/:blogId/settings` | Ajustes del blog                        |
 
-El CRUD completo de blogs y el editor markdown se implementan en las fases 4 y 5.
+El editor markdown y la subida de imágenes se implementan en las fases 5 y 6.
 
 ## API
 
