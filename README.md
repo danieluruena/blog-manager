@@ -10,7 +10,7 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 2 — API.** La SPA, el Worker, el esquema D1, los repositorios, el seed, la CLI de administración y la API HTTP están listos. La UI del CRUD y el editor llegan en las siguientes fases.
+**Fase 3 — Frontend base.** La SPA, el Worker, el esquema D1, la API HTTP, el login, el shell responsive, el panel y la lista de blogs están listos. El CRUD visual de blogs y el editor markdown llegan en las siguientes fases.
 
 Documentación:
 
@@ -132,6 +132,20 @@ npx wrangler secret put AUTH_PEPPER
 > npm run user:create -- --email tu@email.com --name "Tu Nombre" --remote
 > Remove-Item Env:AUTH_PEPPER
 > ```
+
+## Interfaz
+
+Rutas principales:
+
+| Ruta                      | Pantalla                                   |
+| ------------------------- | ------------------------------------------ |
+| `/login`                  | Inicio de sesión                           |
+| `/`                       | Panel con métricas y actividad reciente    |
+| `/blogs`                  | Lista de blogs (solo lectura en la Fase 3) |
+| `/blogs/:blogId/articles` | Artículos del blog (solo lectura)          |
+| `/blogs/:blogId/settings` | Ajustes del blog (Fase 4)                  |
+
+El CRUD completo de blogs y el editor markdown se implementan en las fases 4 y 5.
 
 ## API
 

@@ -10,12 +10,20 @@ import {
 } from "./common"
 
 const articleBaseSchema = z.object({
-  title: z.string().trim().min(1).max(200),
+  title: z
+    .string()
+    .trim()
+    .min(1, "El título es obligatorio")
+    .max(200, "El título no puede superar los 200 caracteres"),
   slug: articleSlugSchema.optional(),
-  excerpt: z.string().trim().max(300),
-  author: z.string().trim().min(1).max(120),
-  body: z.string().max(200_000),
-  status: z.enum(articleStatusValues),
+  excerpt: z.string().trim().max(300, "El resumen no puede superar los 300 caracteres"),
+  author: z
+    .string()
+    .trim()
+    .min(1, "El autor es obligatorio")
+    .max(120, "El autor no puede superar los 120 caracteres"),
+  body: z.string().max(200_000, "El contenido es demasiado largo"),
+  status: z.enum(articleStatusValues, { message: "Estado inválido" }),
   publishedAt: isoDateSchema.nullable().optional(),
 })
 

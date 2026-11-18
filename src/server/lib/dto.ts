@@ -1,72 +1,19 @@
+import type {
+  ArticleDto,
+  ArticleSummaryDto,
+  BlogDto,
+  PublicArticleDto,
+  PublicArticleSummaryDto,
+  PublicBlogDto,
+  RecentArticleDto,
+  UserDto,
+} from "@shared/types"
+
 import type { Article, Blog, User } from "../db/schema"
 import type { ArticleSummary } from "../db/repositories/articlesRepository"
 import type { BlogListItem } from "../db/repositories/blogsRepository"
-import type { DashboardStats, RecentArticle } from "../db/repositories/statsRepository"
+import type { RecentArticle } from "../db/repositories/statsRepository"
 import { parseOrigins } from "./origins"
-
-export type UserDto = {
-  id: string
-  email: string
-  name: string
-  role: User["role"]
-}
-
-export type BlogDto = {
-  id: string
-  name: string
-  slug: string
-  description: string
-  siteUrl: string
-  allowedOrigins: string[]
-  isActive: boolean
-  articleCount?: number
-  createdAt: string
-  updatedAt: string
-}
-
-export type PublicBlogDto = {
-  name: string
-  slug: string
-  description: string
-  siteUrl: string
-}
-
-export type ArticleSummaryDto = {
-  id: string
-  blogId: string
-  title: string
-  slug: string
-  excerpt: string
-  author: string
-  status: Article["status"]
-  createdAt: string
-  publishedAt: string | null
-  updatedAt: string
-}
-
-export type ArticleDto = ArticleSummaryDto & {
-  body: string
-}
-
-export type PublicArticleSummaryDto = Omit<ArticleSummaryDto, "blogId">
-
-export type PublicArticleDto = PublicArticleSummaryDto & {
-  body: string
-  blog: {
-    name: string
-    slug: string
-    siteUrl: string
-  }
-}
-
-export type StatsDto = DashboardStats & {
-  recentArticles: Array<
-    ArticleSummaryDto & {
-      blogName: string
-      blogSlug: string
-    }
-  >
-}
 
 export function toUserDto(user: User): UserDto {
   return {
@@ -150,10 +97,7 @@ export function toPublicArticleDto(
   }
 }
 
-export function toRecentArticleDto(article: RecentArticle): ArticleSummaryDto & {
-  blogName: string
-  blogSlug: string
-} {
+export function toRecentArticleDto(article: RecentArticle): RecentArticleDto {
   return {
     ...toArticleSummaryDto(article),
     blogName: article.blogName,
