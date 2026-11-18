@@ -5,20 +5,20 @@ export const idSchema = z.uuid()
 export const blogSlugSchema = z
   .string()
   .trim()
-  .min(1)
-  .max(80)
+  .min(1, "El slug es obligatorio")
+  .max(80, "El slug no puede superar los 80 caracteres")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "El slug solo admite minúsculas, números y guiones")
 
 export const articleSlugSchema = z
   .string()
   .trim()
-  .min(1)
-  .max(200)
+  .min(1, "El slug es obligatorio")
+  .max(200, "El slug no puede superar los 200 caracteres")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "El slug solo admite minúsculas, números y guiones")
 
 export const siteUrlSchema = z
-  .url()
-  .max(500)
+  .url("Introduce una URL válida")
+  .max(500, "La URL es demasiado larga")
   .refine((value) => {
     const protocol = new URL(value).protocol
     return protocol === "http:" || protocol === "https:"
@@ -39,7 +39,10 @@ export const originSchema = z
     }
   }, "El origen debe tener el formato https://ejemplo.com")
 
-export const allowedOriginsSchema = z.array(originSchema).max(20).default([])
+export const allowedOriginsSchema = z
+  .array(originSchema)
+  .max(20, "Puedes configurar como máximo 20 orígenes")
+  .default([])
 
 export const pageSchema = z.coerce.number().int().min(1).default(1)
 export const pageSizeSchema = z.coerce.number().int().min(1).max(100).default(20)

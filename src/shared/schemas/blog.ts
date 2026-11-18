@@ -10,11 +10,15 @@ import {
 } from "./common"
 
 const blogBaseSchema = z.object({
-  name: z.string().trim().min(1).max(120),
+  name: z
+    .string()
+    .trim()
+    .min(1, "El nombre es obligatorio")
+    .max(120, "El nombre no puede superar los 120 caracteres"),
   slug: blogSlugSchema.optional(),
-  description: z.string().trim().max(500),
+  description: z.string().trim().max(500, "La descripción no puede superar los 500 caracteres"),
   siteUrl: siteUrlSchema,
-  allowedOrigins: z.array(originSchema).max(20),
+  allowedOrigins: z.array(originSchema).max(20, "Puedes configurar como máximo 20 orígenes"),
   isActive: z.boolean(),
 })
 

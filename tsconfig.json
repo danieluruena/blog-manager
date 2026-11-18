@@ -5,5 +5,12 @@
     { "path": "./tsconfig.node.json" },
     { "path": "./tsconfig.worker.json" },
     { "path": "./tsconfig.test.json" }
-  ]
+  ],
+  "compilerOptions": {
+    "paths": {
+      "@client/*": ["./src/client/*"],
+      "@server/*": ["./src/server/*"],
+      "@shared/*": ["./src/shared/*"]
+    }
+  }
 }
