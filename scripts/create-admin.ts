@@ -10,6 +10,7 @@ import { nowIso } from "../src/server/lib/dates"
 import { newId } from "../src/server/lib/ids"
 import { hashPassword } from "../src/server/lib/password"
 
+import { loadDevVars } from "./lib/env"
 import { assertWranglerAuthenticated, runWrangler } from "./lib/wrangler"
 
 const DB_NAME = "blog-manager-db"
@@ -106,6 +107,12 @@ async function main(): Promise<void> {
     strict: true,
   })
 
+  const remote = values.remote === true
+
+  if (!remote) {
+    loadDevVars()
+  }
+
   const email = (
     values.email?.trim() || (await promptLine("Email del administrador: "))
   ).toLowerCase()
@@ -146,14 +153,22 @@ async function main(): Promise<void> {
     throw new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
   }
 
-  const remote = values.remote === true
-
   if (remote) {
     assertWranglerAuthenticated()
   }
 
+  const pepper = process.env.AUTH_PEPPER
+
+  if (!pepper || pepper.length < 32) {
+    throw new Error(
+      remote
+        ? "Define AUTH_PEPPER con el mismo valor del secret del Worker antes de usar --remote."
+        : "Falta AUTH_PEPPER en .dev.vars. Genera uno con `node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"`.",
+    )
+  }
+
   console.log("Generando hash de contraseña...")
-  const passwordHash = await hashPassword(password)
+  const passwordHash = await hashPassword(password, pepper)
   const timestamp = nowIso()
   const id = newId()
 

@@ -8,13 +8,14 @@ import type { Article, Blog, NewArticle, NewBlog, User } from "../../src/server/
 import { hashPassword } from "../../src/server/lib/password"
 
 export const TEST_PASSWORD = "Test-Password-123"
+export const TEST_PEPPER = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 export const NOW = "2026-11-18T10:00:00.000Z"
 
 const db = createDb(env.DB)
 let passwordHashPromise: Promise<string> | null = null
 
 function getTestPasswordHash(): Promise<string> {
-  passwordHashPromise ??= hashPassword(TEST_PASSWORD)
+  passwordHashPromise ??= hashPassword(TEST_PASSWORD, TEST_PEPPER)
   return passwordHashPromise
 }
 
@@ -40,7 +41,7 @@ type TestUserOptions = {
 export async function createTestUser(options: TestUserOptions = {}): Promise<User> {
   const id = crypto.randomUUID()
   const passwordHash = options.password
-    ? await hashPassword(options.password)
+    ? await hashPassword(options.password, TEST_PEPPER)
     : await getTestPasswordHash()
 
   return createUser(db, {

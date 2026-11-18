@@ -1,3 +1,4 @@
 # Copia este archivo a .dev.vars para desarrollo local.
-# No hay secretos obligatorios en la Fase 0.
-# APP_ENV=development
+# Genera un pepper con:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+AUTH_PEPPER=change-me

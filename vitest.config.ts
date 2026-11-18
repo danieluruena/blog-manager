@@ -13,6 +13,7 @@ export default defineConfig(async () => {
         miniflare: {
           bindings: {
             TEST_MIGRATIONS: migrations,
+            AUTH_PEPPER: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
           },
         },
       }),

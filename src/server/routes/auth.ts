@@ -22,7 +22,13 @@ function clientIp(c: Context<AppEnv>): string {
 
 authRoutes.post("/login", async (c) => {
   const input = await parseJson(c, loginSchema)
-  const result = await login(getDb(c.env), input.email, input.password, clientIp(c))
+  const result = await login(
+    getDb(c.env),
+    input.email,
+    input.password,
+    clientIp(c),
+    c.env.AUTH_PEPPER,
+  )
 
   setSessionCookie(c, result.token)
 
@@ -52,7 +58,13 @@ authRoutes.get("/me", requireAuth, (c) => {
 authRoutes.patch("/password", requireAuth, async (c) => {
   const input = await parseJson(c, changePasswordSchema)
 
-  await changePassword(getDb(c.env), c.get("user").id, input.currentPassword, input.newPassword)
+  await changePassword(
+    getDb(c.env),
+    c.get("user").id,
+    input.currentPassword,
+    input.newPassword,
+    c.env.AUTH_PEPPER,
+  )
   clearSessionCookie(c)
 
   return c.body(null, 204)

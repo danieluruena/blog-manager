@@ -1,56 +1,56 @@
 import { constantTimeEqual, fromHex, randomHex, toHex } from "./encoding"
 
-const ALGORITHM = "pbkdf2"
-const ITERATIONS = 600_000
+const ALGORITHM = "hmac-sha256"
+const VERSION = "1"
 const SALT_BYTES = 16
-const HASH_BYTES = 32
-const MIN_ITERATIONS = 100_000
-const MAX_ITERATIONS = 1_000_000
+const MIN_PEPPER_LENGTH = 32
 
-async function derivePassword(
-  password: string,
+async function hmac(
+  pepper: string,
   salt: Uint8Array<ArrayBuffer>,
-  iterations: number,
+  password: string,
 ): Promise<Uint8Array> {
-  const keyMaterial = await crypto.subtle.importKey(
+  const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(password),
-    "PBKDF2",
+    new TextEncoder().encode(pepper),
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ["deriveBits"],
+    ["sign"],
   )
+  const passwordBytes = new TextEncoder().encode(password)
+  const data = new Uint8Array(salt.length + passwordBytes.length)
 
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      hash: "SHA-256",
-      salt,
-      iterations,
-    },
-    keyMaterial,
-    HASH_BYTES * 8,
-  )
+  data.set(salt)
+  data.set(passwordBytes, salt.length)
 
-  return new Uint8Array(bits)
+  const signature = await crypto.subtle.sign("HMAC", key, data)
+
+  return new Uint8Array(signature)
 }
 
-export async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string, pepper: string): Promise<string> {
+  if (pepper.length < MIN_PEPPER_LENGTH) {
+    throw new Error(`AUTH_PEPPER debe tener al menos ${MIN_PEPPER_LENGTH} caracteres`)
+  }
+
   const salt = fromHex(randomHex(SALT_BYTES))
-  const hash = await derivePassword(password, salt, ITERATIONS)
+  const hash = await hmac(pepper, salt, password)
 
-  return `${ALGORITHM}$${ITERATIONS}$${toHex(salt)}$${toHex(hash)}`
+  return `${ALGORITHM}$${VERSION}$${toHex(salt)}$${toHex(hash)}`
 }
 
-export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const parts = storedHash.split("$")
-
-  if (parts.length !== 4 || parts[0] !== ALGORITHM) {
+export async function verifyPassword(
+  password: string,
+  storedHash: string,
+  pepper: string,
+): Promise<boolean> {
+  if (pepper.length < MIN_PEPPER_LENGTH) {
     return false
   }
 
-  const iterations = Number.parseInt(parts[1], 10)
+  const parts = storedHash.split("$")
 
-  if (!Number.isInteger(iterations) || iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) {
+  if (parts.length !== 4 || parts[0] !== ALGORITHM || parts[1] !== VERSION) {
     return false
   }
 
@@ -64,7 +64,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     return false
   }
 
-  const actual = await derivePassword(password, salt, iterations)
+  const actual = await hmac(pepper, salt, password)
 
   return constantTimeEqual(actual, expected)
 }

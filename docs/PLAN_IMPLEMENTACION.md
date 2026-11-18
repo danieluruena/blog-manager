@@ -153,7 +153,7 @@ Tener el esquema definitivo, migraciones reproducibles, repositorios tipados y u
   - [ ] `nowIso()` y normalización de fechas.
   - [ ] Generación de IDs.
   - [ ] Generación de slugs y resolución de colisiones.
-  - [ ] `hashPassword`/`verifyPassword` (PBKDF2-SHA256, 600.000 iteraciones).
+  - [ ] `hashPassword`/`verifyPassword` (HMAC-SHA256 + pepper secreto, compatible con el plan gratuito de Workers).
   - [ ] `generateSessionToken`/`hashSessionToken`.
 - [ ] Implementar `scripts/create-admin.ts`:
   - [ ] Pide email, nombre y contraseña de forma interactiva.

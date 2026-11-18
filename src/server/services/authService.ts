@@ -22,6 +22,16 @@ import { generateSessionToken, hashSessionToken } from "../lib/session"
 
 const SESSION_DAYS = 7
 
+function assertPepper(pepper: string): void {
+  if (!pepper || pepper.length < 32) {
+    throw new ApiError(
+      500,
+      "CONFIGURATION_ERROR",
+      "Falta configurar AUTH_PEPPER (mínimo 32 caracteres)",
+    )
+  }
+}
+
 export type LoginResult = {
   user: User
   token: string
@@ -33,7 +43,10 @@ export async function login(
   email: string,
   password: string,
   ip: string,
+  pepper: string,
 ): Promise<LoginResult> {
+  assertPepper(pepper)
+
   const keys = await buildAttemptKeys(ip, email)
   const rateLimit = await checkRateLimit(db, keys)
 
@@ -53,7 +66,7 @@ export async function login(
     throw new ApiError(401, "INVALID_CREDENTIALS", "Credenciales inválidas")
   }
 
-  const validPassword = await verifyPassword(password, user.passwordHash)
+  const validPassword = await verifyPassword(password, user.passwordHash, pepper)
 
   if (!validPassword) {
     await registerFailedAttempt(db, keys)
@@ -94,20 +107,23 @@ export async function changePassword(
   userId: string,
   currentPassword: string,
   newPassword: string,
+  pepper: string,
 ): Promise<void> {
+  assertPepper(pepper)
+
   const user = await findUserById(db, userId)
 
   if (!user || !user.isActive) {
     throw new ApiError(401, "UNAUTHORIZED", "Usuario no válido")
   }
 
-  const validPassword = await verifyPassword(currentPassword, user.passwordHash)
+  const validPassword = await verifyPassword(currentPassword, user.passwordHash, pepper)
 
   if (!validPassword) {
     throw new ApiError(401, "INVALID_CREDENTIALS", "La contraseña actual no es correcta")
   }
 
-  const passwordHash = await hashPassword(newPassword)
+  const passwordHash = await hashPassword(newPassword, pepper)
 
   await updateUser(db, userId, {
     passwordHash,

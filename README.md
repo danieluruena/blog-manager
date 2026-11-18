@@ -32,7 +32,17 @@ npm install
 Copy-Item .dev.vars.example .dev.vars
 ```
 
-`.dev.vars` es opcional en desarrollo local: no hay secretos obligatorios todavía. Está ignorado por Git.
+`AUTH_PEPPER` es obligatorio para el login. Genera uno y pégalo en `.dev.vars`:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+```text
+AUTH_PEPPER=<el-valor-generado>
+```
+
+No cambies el pepper después de crear usuarios: sus contraseñas dejarían de verificar. `.dev.vars` está ignorado por Git.
 
 ## Ejecutar en local
 
@@ -100,7 +110,7 @@ npm run db:seed
 npm run user:create -- --email tu@email.com --name "Tu Nombre"
 ```
 
-El comando pide la contraseña de forma interactiva (mínimo 12 caracteres). Para automatizarlo:
+El comando pide la contraseña de forma interactiva (mínimo 12 caracteres) y lee `AUTH_PEPPER` de `.dev.vars`. Para automatizarlo:
 
 ```powershell
 $env:ADMIN_PASSWORD = "una-contraseña-larga"
@@ -112,7 +122,16 @@ Para crear los recursos remotos y desplegar sí necesitas autenticarte:
 
 ```powershell
 npx wrangler login
+npx wrangler secret put AUTH_PEPPER
 ```
+
+> Guarda el valor de `AUTH_PEPPER` en un lugar seguro. Para crear un administrador remoto necesitas pasar el **mismo** valor:
+>
+> ```powershell
+> $env:AUTH_PEPPER = "el-mismo-valor-del-secret"
+> npm run user:create -- --email tu@email.com --name "Tu Nombre" --remote
+> Remove-Item Env:AUTH_PEPPER
+> ```
 
 ## API
 
