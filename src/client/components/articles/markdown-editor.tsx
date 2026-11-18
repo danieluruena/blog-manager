@@ -47,7 +47,7 @@ export function MarkdownEditor({
           <Label htmlFor={id}>Contenido</Label>
           <p className="mt-1 text-xs text-muted-foreground">
             Markdown con atajos, tablas, código e imágenes. Puedes pegarlas o arrastrarlas (máx. 5
-            MB).
+            MB); se subirán al guardar.
           </p>
         </div>
 

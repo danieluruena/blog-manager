@@ -399,6 +399,7 @@ Subir imágenes desde el editor y servirlas con caché.
   - [x] `imageUploadHandler` de MDXEditor.
   - [x] Manejo de `paste` para imágenes del portapapeles.
   - [x] Manejo de `drop` para arrastrar archivos.
+  - [x] Previsualización local con `blob:` y subida solo al guardar las imágenes que sigan en el artículo.
   - [x] Placeholder/progreso durante la subida.
   - [x] Inserción de `![alt](url)` en la posición del cursor.
   - [x] Toast de error y reintento.

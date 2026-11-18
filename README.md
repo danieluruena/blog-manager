@@ -107,7 +107,7 @@ npm run db:seed
 ### Imágenes en R2
 
 - Formatos: JPEG, PNG, WebP, GIF y AVIF. Tamaño máximo: 5 MB.
-- Puedes pegar o arrastrar imágenes directamente en el editor; se suben a R2 y se insertan como markdown con una URL absoluta.
+- Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el markdown.
 - Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes).
 - En local los objetos se guardan en `.wrangler/state/v3/r2`; al borrar un blog sin artículos se eliminan también sus imágenes.
 
@@ -154,7 +154,7 @@ Rutas principales:
 | `/blogs/:blogId/articles/:articleId` | Edición de un artículo                  |
 | `/blogs/:blogId/settings`            | Ajustes del blog                        |
 
-El editor de artículos usa MDXEditor con carga diferida y guarda el contenido en markdown. Las imágenes que pegas o arrastras se suben a R2 y se enlazan con su URL pública.
+El editor de artículos usa MDXEditor con carga diferida y guarda el contenido en markdown. Las imágenes se previsualizan en local y se suben a R2 al guardar el artículo.
 
 ## API
 
