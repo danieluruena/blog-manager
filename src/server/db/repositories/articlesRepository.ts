@@ -74,7 +74,7 @@ export async function listArticlesByBlog(
   if (filters.q?.trim()) {
     const term = `%${filters.q.trim().toLowerCase()}%`
     conditions.push(
-      sql`(lower(${articles.title}) like ${term} or lower(${articles.excerpt}) like ${term})`,
+      sql`(lower(${articles.title}) like ${term} or lower(${articles.excerpt}) like ${term} or lower(${articles.slug}) like ${term})`,
     )
   }
 

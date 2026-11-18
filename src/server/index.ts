@@ -1,35 +1,18 @@
+import type { HealthResponse } from "@shared/types"
 import { Hono } from "hono"
 
-import type { HealthResponse } from "@shared/types"
-
-type AppEnv = {
-  Bindings: Env
-  Variables: {
-    requestId: string
-  }
-}
+import { errorResponse } from "./lib/errors"
+import { csrfProtection } from "./middleware/csrf"
+import { requestContext } from "./middleware/requestContext"
+import { adminRoutes } from "./routes/admin"
+import { authRoutes } from "./routes/auth"
+import { publicRoutes } from "./routes/public"
+import type { AppEnv } from "./types"
 
 const app = new Hono<AppEnv>()
 
-app.use("*", async (c, next) => {
-  const requestId = crypto.randomUUID()
-  c.set("requestId", requestId)
-  c.header("X-Request-Id", requestId)
-
-  const startedAt = Date.now()
-  await next()
-
-  console.log(
-    JSON.stringify({
-      level: "info",
-      requestId,
-      method: c.req.method,
-      path: new URL(c.req.url).pathname,
-      status: c.res.status,
-      durationMs: Date.now() - startedAt,
-    }),
-  )
-})
+app.use("*", requestContext)
+app.use("/api/*", csrfProtection)
 
 app.get("/api/health", (c) => {
   const response: HealthResponse = {
@@ -41,6 +24,10 @@ app.get("/api/health", (c) => {
 
   return c.json(response)
 })
+
+app.route("/api/auth", authRoutes)
+app.route("/api/admin", adminRoutes)
+app.route("/api/public/v1", publicRoutes)
 
 app.notFound((c) => {
   const { pathname } = new URL(c.req.url)
@@ -61,25 +48,6 @@ app.notFound((c) => {
   return c.env.ASSETS.fetch(c.req.raw)
 })
 
-app.onError((error, c) => {
-  console.error(
-    JSON.stringify({
-      level: "error",
-      requestId: c.get("requestId"),
-      message: error instanceof Error ? error.message : "Error desconocido",
-    }),
-  )
-
-  return c.json(
-    {
-      error: {
-        code: "INTERNAL",
-        message: "Error interno del servidor",
-        requestId: c.get("requestId"),
-      },
-    },
-    500,
-  )
-})
+app.onError((error, c) => errorResponse(c, error))
 
 export default app

@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. La API y la UI del CRUD son las siguientes fases.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. La UI del CRUD y el editor son las siguientes fases.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 

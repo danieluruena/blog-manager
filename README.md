@@ -10,12 +10,13 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 1 — Modelo de datos.** La SPA, el Worker, `/api/health`, el tema base, el esquema D1, las migraciones, los repositorios, el seed y la CLI de administración están listos. La API y la UI del CRUD llegan en las siguientes fases.
+**Fase 2 — API.** La SPA, el Worker, el esquema D1, los repositorios, el seed, la CLI de administración y la API HTTP están listos. La UI del CRUD y el editor llegan en las siguientes fases.
 
 Documentación:
 
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
 - [`docs/PLAN_IMPLEMENTACION.md`](docs/PLAN_IMPLEMENTACION.md)
+- [`docs/API.md`](docs/API.md) — endpoints, auth, CORS y ejemplos.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — flujo GitFlow.
 
 ## Requisitos
@@ -112,6 +113,34 @@ Para crear los recursos remotos y desplegar sí necesitas autenticarte:
 ```powershell
 npx wrangler login
 ```
+
+## API
+
+La API HTTP está implementada. Documentación completa en [`docs/API.md`](docs/API.md).
+
+| Zona           | Base             | Autenticación               |
+| -------------- | ---------------- | --------------------------- |
+| Auth           | `/api/auth`      | Cookie de sesión            |
+| Administración | `/api/admin`     | Cookie de sesión            |
+| Pública        | `/api/public/v1` | Sin auth, con CORS por blog |
+
+Prueba rápida en local:
+
+```powershell
+# Login (guarda la cookie)
+curl.exe -i -c cookies.txt `
+  -H "Content-Type: application/json" `
+  --data-raw '{"email":"tu@email.com","password":"tu-contraseña"}' `
+  http://localhost:5173/api/auth/login
+
+# Blogs del panel
+curl.exe -b cookies.txt http://localhost:5173/api/admin/blogs
+
+# API pública del blog de ejemplo
+curl.exe "http://localhost:5173/api/public/v1/blogs/pagina-a/articles"
+```
+
+La API pública solo devuelve blogs activos y artículos `published` o `featured`. CORS permite el origen de `siteUrl` y los orígenes configurados en `allowedOrigins`.
 
 ## Tests y calidad
 

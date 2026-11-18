@@ -1,11 +1,14 @@
 import { sql } from "drizzle-orm"
 import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
-export const userRoleValues = ["admin", "editor"] as const
-export type UserRole = (typeof userRoleValues)[number]
+import { articleStatusValues, userRoleValues } from "../../shared/constants"
 
-export const articleStatusValues = ["draft", "published", "hidden", "featured"] as const
-export type ArticleStatus = (typeof articleStatusValues)[number]
+export {
+  articleStatusValues,
+  userRoleValues,
+  type ArticleStatus,
+  type UserRole,
+} from "../../shared/constants"
 
 export const users = sqliteTable(
   "users",
@@ -117,6 +120,8 @@ export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Session = typeof sessions.$inferSelect
 export type NewSession = typeof sessions.$inferInsert
+export type AuthAttempt = typeof authAttempts.$inferSelect
+export type NewAuthAttempt = typeof authAttempts.$inferInsert
 export type Blog = typeof blogs.$inferSelect
 export type NewBlog = typeof blogs.$inferInsert
 export type Article = typeof articles.$inferSelect

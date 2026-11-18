@@ -17,6 +17,13 @@ export default defineConfig(async () => {
         },
       }),
     ],
+    resolve: {
+      alias: {
+        "@client": fileURLToPath(new URL("./src/client", import.meta.url)),
+        "@server": fileURLToPath(new URL("./src/server", import.meta.url)),
+        "@shared": fileURLToPath(new URL("./src/shared", import.meta.url)),
+      },
+    },
     test: {
       include: ["tests/**/*.test.ts"],
       setupFiles: ["./tests/apply-migrations.ts"],

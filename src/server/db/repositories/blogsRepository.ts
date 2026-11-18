@@ -34,7 +34,7 @@ export async function listBlogs(
 
   if (filters.q?.trim()) {
     const term = `%${filters.q.trim().toLowerCase()}%`
-    conditions.push(sql`lower(${blogs.name}) like ${term}`)
+    conditions.push(sql`(lower(${blogs.name}) like ${term} or lower(${blogs.slug}) like ${term})`)
   }
 
   if (filters.active !== undefined) {
