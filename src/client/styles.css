@@ -99,7 +99,7 @@
   --baseBorderHover: #343a44;
   --baseSolid: var(--color-line);
   --baseSolidHover: #343a44;
-  --baseText: var(--color-muted);
+  --baseText: var(--color-muted-foreground);
   --baseTextContrast: var(--color-ink);
   --basePageBg: var(--color-surface);
   --accentBase: var(--color-brand);
@@ -123,6 +123,17 @@
   padding: 0.35rem 0.5rem;
 }
 
+.blog-editor [class*="_tooltipContent_"] {
+  border: 1px solid var(--color-line);
+  background-color: var(--color-surface-2);
+  color: var(--color-ink);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.blog-editor [class*="_tooltipContent_"] svg {
+  fill: var(--color-ink);
+}
+
 .blog-editor .blog-editor-content {
   min-height: 28rem;
   padding: 1.25rem 1.5rem 2rem;
@@ -133,7 +144,7 @@
 }
 
 .blog-editor .blog-editor-content:empty::before {
-  color: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  color: color-mix(in srgb, var(--color-muted-foreground) 70%, transparent);
 }
 
 .blog-editor .blog-editor-content h1,
