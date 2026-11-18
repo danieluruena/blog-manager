@@ -10,6 +10,10 @@ const MdxEditor = lazy(() =>
 
 type EditorMode = "visual" | "markdown"
 
+const activeModeClass =
+  "bg-brand/15 text-brand ring-1 ring-brand/30 hover:bg-brand/20 hover:text-brand"
+const inactiveModeClass = "text-muted-foreground hover:bg-surface-2 hover:text-ink"
+
 export function MarkdownEditor({
   id,
   value,
@@ -54,9 +58,10 @@ export function MarkdownEditor({
           <Button
             type="button"
             size="xs"
-            variant={mode === "visual" ? "secondary" : "ghost"}
+            variant="ghost"
             onClick={() => changeMode("visual")}
             aria-pressed={mode === "visual"}
+            className={mode === "visual" ? activeModeClass : inactiveModeClass}
           >
             <Eye className="size-3.5" />
             Visual
@@ -64,9 +69,10 @@ export function MarkdownEditor({
           <Button
             type="button"
             size="xs"
-            variant={mode === "markdown" ? "secondary" : "ghost"}
+            variant="ghost"
             onClick={() => changeMode("markdown")}
             aria-pressed={mode === "markdown"}
+            className={mode === "markdown" ? activeModeClass : inactiveModeClass}
           >
             <Code2 className="size-3.5" />
             Markdown
