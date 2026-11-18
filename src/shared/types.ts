@@ -95,6 +95,16 @@ export type PublicArticleDto = PublicArticleSummaryDto & {
   }
 }
 
+export type MediaDto = {
+  id: string
+  blogId: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+  url: string
+  createdAt: string
+}
+
 export type DashboardStats = {
   totalBlogs: number
   activeBlogs: number

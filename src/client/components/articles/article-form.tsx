@@ -1,5 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { articleStatusValues, type ArticleStatus } from "@shared/constants"
+import {
+  articleStatusValues,
+  imageMimeTypeValues,
+  maxImageBytes,
+  type ArticleStatus,
+} from "@shared/constants"
 import type { ArticleDto, BlogDto } from "@shared/types"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, EyeOff, Loader2, Save, Send, Trash2 } from "lucide-react"
@@ -59,6 +64,9 @@ const statusDescriptions: Record<ArticleStatus, string> = {
   hidden: "Oculto en la API pública, pero conserva su fecha de publicación.",
   featured: "Visible en la API pública y marcado como destacado.",
 }
+
+const MAX_IMAGE_BYTES = maxImageBytes
+const allowedImageTypes = new Set<string>(imageMimeTypeValues)
 
 type SavePayload = {
   values: ArticleFormValues
@@ -185,6 +193,32 @@ export function ArticleForm({
     submitWithStatus(isVisibleStatus(status) ? "draft" : "published")
   }
 
+  async function uploadImage(file: File): Promise<string> {
+    if (!allowedImageTypes.has(file.type)) {
+      toast.error("Formato no permitido. Usa JPEG, PNG, WebP, GIF o AVIF.")
+      throw new Error("Formato de imagen no permitido")
+    }
+
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("La imagen no puede superar los 5 MB.")
+      throw new Error("La imagen es demasiado grande")
+    }
+
+    const toastId = toast.loading("Subiendo imagen…")
+
+    try {
+      const response = await api.uploadImage(blog.id, file)
+      toast.success("Imagen subida", { id: toastId })
+      return response.data.url
+    } catch (uploadError) {
+      toast.error(
+        uploadError instanceof Error ? uploadError.message : "No se pudo subir la imagen",
+        { id: toastId },
+      )
+      throw uploadError
+    }
+  }
+
   const error = mutation.error instanceof ApiError ? mutation.error : null
   const words = countWords(body)
   const visible = isVisibleStatus(status)
@@ -293,6 +327,7 @@ export function ArticleForm({
                         id="article-body"
                         value={field.value}
                         onChange={field.onChange}
+                        onUploadImage={uploadImage}
                       />
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                         <span>

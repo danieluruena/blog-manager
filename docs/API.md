@@ -11,6 +11,7 @@ La API se divide en tres zonas:
 | -------------- | ---------------- | ---------------------------------------- |
 | Autenticación  | `/api/auth`      | Pública para login; cookie para el resto |
 | Administración | `/api/admin`     | Cookie de sesión                         |
+| Medios         | `/media`         | Sin autenticación, con caché larga       |
 | Pública        | `/api/public/v1` | Sin autenticación, con CORS por blog     |
 
 ## Respuestas
@@ -217,6 +218,39 @@ Reglas:
 - El slug es único dentro del blog.
 - Si se publica (`published` o `featured`) sin `publishedAt`, el servidor asigna la fecha actual.
 - Un artículo de otro blog bajo la URL de este responde `404`, no `403`.
+
+### Imágenes
+
+| Método   | Ruta                                          | Descripción                        |
+| -------- | --------------------------------------------- | ---------------------------------- |
+| `POST`   | `/api/admin/blogs/:blogId/media`              | Sube una imagen (`multipart/form-data`, campo `file`) |
+| `DELETE` | `/api/admin/blogs/:blogId/media/:mediaId`     | Elimina la imagen de D1 y R2 (solo admin) |
+| `GET`    | `/media/:blogId/:filename`                    | Sirve la imagen con caché inmutable |
+
+Límites y formatos:
+
+- Tamaño máximo: **5 MB**. Por encima responde `413 FILE_TOO_LARGE`.
+- Formatos: `image/jpeg`, `image/png`, `image/webp`, `image/gif` e `image/avif`.
+- Se comprueban los bytes mágicos: si el contenido no coincide con el MIME declarado responde `415`.
+- La respuesta incluye una URL absoluta (`url`) lista para insertar en markdown:
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "blogId": "uuid",
+    "filename": "uuid.png",
+    "mimeType": "image/png",
+    "sizeBytes": 12345,
+    "url": "https://<worker>.workers.dev/media/<blogId>/<uuid>.png",
+    "createdAt": "2026-11-18T10:00:00.000Z"
+  }
+}
+```
+
+La entrega usa `Cache-Control: public, max-age=31536000, immutable`, `ETag` (responde `304` con `If-None-Match`), `Content-Type` del objeto y `X-Content-Type-Options: nosniff`.
+
+Al eliminar un blog sin artículos se borran también sus filas de `media` y sus objetos de R2 en segundo plano.
 
 ### Estadísticas
 

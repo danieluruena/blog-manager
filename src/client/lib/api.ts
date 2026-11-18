@@ -14,6 +14,7 @@ import type {
   BlogDto,
   DataResponse,
   LoginResponse,
+  MediaDto,
   MeResponse,
   PaginatedResponse,
   StatsDto,
@@ -35,7 +36,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
 
-  if (init.body && !headers.has("content-type")) {
+  if (typeof init.body === "string" && !headers.has("content-type")) {
     headers.set("content-type", "application/json")
   }
 
@@ -189,6 +190,16 @@ export const api = {
   deleteArticle(blogId: string, articleId: string): Promise<void> {
     return request<void>(`/api/admin/blogs/${blogId}/articles/${articleId}`, {
       method: "DELETE",
+    })
+  },
+
+  uploadImage(blogId: string, file: File): Promise<DataResponse<MediaDto>> {
+    const body = new FormData()
+    body.set("file", file)
+
+    return request<DataResponse<MediaDto>>(`/api/admin/blogs/${blogId}/media`, {
+      method: "POST",
+      body,
     })
   },
 }

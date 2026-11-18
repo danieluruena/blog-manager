@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Las imágenes en R2 son la siguiente fase.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. El hardening es la siguiente fase.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -384,28 +384,28 @@ Subir imágenes desde el editor y servirlas con caché.
 
 ### Tareas
 
-- [ ] Crear bucket R2 y binding `MEDIA` (el bootstrap ya lo deja preparado).
-- [ ] Endpoint `POST /api/admin/blogs/:blogId/media` (multipart):
-  - [ ] Validar tamaño (≤ 5 MB) y MIME permitido.
-  - [ ] Generar clave `blogs/<blogId>/<uuid>.<ext>`.
-  - [ ] Guardar objeto en R2 y metadata en D1.
-  - [ ] Devolver URL pública.
-- [ ] Endpoint `GET /media/:blogId/:filename`:
-  - [ ] Leer de R2.
-  - [ ] `Cache-Control: public, max-age=31536000, immutable`.
-  - [ ] ETag y `Content-Type` correctos.
-  - [ ] 404 si no existe.
-- [ ] Integrar en el editor:
-  - [ ] `imageUploadHandler` de MDXEditor.
-  - [ ] Manejo de `paste` para imágenes del portapapeles.
-  - [ ] Manejo de `drop` para arrastrar archivos.
-  - [ ] Placeholder/progreso durante la subida.
-  - [ ] Inserción de `![alt](url)` en la posición del cursor.
-  - [ ] Toast de error y reintento.
-- [ ] Borrado de imagen: metadata + objeto R2.
-- [ ] Al borrar un blog sin artículos, borrar sus objetos de R2 en `ctx.waitUntil()`.
-- [ ] Tests de validación de tamaño/MIME y de entrega.
-- [ ] Documentar límites y formatos permitidos.
+- [x] Crear bucket R2 y binding `MEDIA` (el bootstrap ya lo deja preparado).
+- [x] Endpoint `POST /api/admin/blogs/:blogId/media` (multipart):
+  - [x] Validar tamaño (≤ 5 MB) y MIME permitido.
+  - [x] Generar clave `blogs/<blogId>/<uuid>.<ext>`.
+  - [x] Guardar objeto en R2 y metadata en D1.
+  - [x] Devolver URL pública.
+- [x] Endpoint `GET /media/:blogId/:filename`:
+  - [x] Leer de R2.
+  - [x] `Cache-Control: public, max-age=31536000, immutable`.
+  - [x] ETag y `Content-Type` correctos.
+  - [x] 404 si no existe.
+- [x] Integrar en el editor:
+  - [x] `imageUploadHandler` de MDXEditor.
+  - [x] Manejo de `paste` para imágenes del portapapeles.
+  - [x] Manejo de `drop` para arrastrar archivos.
+  - [x] Placeholder/progreso durante la subida.
+  - [x] Inserción de `![alt](url)` en la posición del cursor.
+  - [x] Toast de error y reintento.
+- [x] Borrado de imagen: metadata + objeto R2.
+- [x] Al borrar un blog sin artículos, borrar sus objetos de R2 en `ctx.waitUntil()`.
+- [x] Tests de validación de tamaño/MIME y de entrega.
+- [x] Documentar límites y formatos permitidos.
 
 ### Criterios de aceptación
 
