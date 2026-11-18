@@ -64,6 +64,8 @@ Vite arranca la SPA y el Worker con el plugin de Cloudflare. La API de salud est
 
 ## Cloudflare
 
+`worker-configuration.d.ts` se genera automáticamente con `npm run cf-typegen` (también se ejecuta antes de `dev`, `build`, `test` y `typecheck`). No se versiona.
+
 El bootstrap requiere autenticación de Wrangler:
 
 ```bash
