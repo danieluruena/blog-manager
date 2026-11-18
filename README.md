@@ -166,6 +166,7 @@ npm run deploy
 - **`worker-configuration.d.ts` no existe:** ejecuta `npm run cf-typegen`; también se genera solo antes de `dev`, `build`, `test` y `typecheck`.
 - **`No such table`:** aplica las migraciones locales cuando existan: `npx wrangler d1 migrations apply blog-manager-db --local`.
 - **No responde `/api/health`:** comprueba que el servidor de Vite sigue activo y que estás usando el puerto correcto.
+- **`/api/health` devuelve HTML o el Worker deja de responder tras cambiar configuración:** detén el servidor y vuelve a ejecutar `npm run dev`; el plugin de Cloudflare reconstruye el entorno del Worker.
 - **Quiero probar endpoints del backend:** usa la Opción B y llama a `http://localhost:8787/api/...`.
 
 ## Estructura
