@@ -41,6 +41,14 @@ Se usa **Conventional Commits**:
 - `refactor: ...`
 - `chore: ...`
 
+## Estilo
+
+- TypeScript/JavaScript **sin punto y coma** al final de las sentencias.
+- Prettier es la fuente de verdad del formato: `npm run format`.
+- ESLint para las reglas: `npm run lint`.
+- Los `for (...)` conservan los separadores obligatorios.
+- El CI de cada PR ejecuta `npm run lint` y `npm run build`.
+
 ## Flujo típico
 
 ```bash

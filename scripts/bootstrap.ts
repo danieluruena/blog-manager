@@ -1,160 +1,139 @@
-import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs"
+import { resolve } from "node:path"
 
-const ROOT = process.cwd();
-const CONFIG_PATH = resolve(ROOT, "wrangler.jsonc");
-const DB_NAME = "blog-manager-db";
-const BUCKET_NAME = "blog-manager-media";
+import { assertWranglerAuthenticated, runWrangler } from "./lib/wrangler"
 
-type CommandResult = {
-  status: number | null;
-  stdout: string;
-  stderr: string;
-};
+const ROOT = process.cwd()
+const CONFIG_PATH = resolve(ROOT, "wrangler.jsonc")
+const DB_NAME = "blog-manager-db"
+const BUCKET_NAME = "blog-manager-media"
 
 type D1Record = {
-  name?: string;
-  database_name?: string;
-  uuid?: string;
-  database_id?: string;
-};
-
-function runWrangler(args: string[]): CommandResult {
-  const result = spawnSync("npx", ["--no-install", "wrangler", ...args], {
-    cwd: ROOT,
-    encoding: "utf8",
-    shell: true,
-    env: process.env,
-  });
-
-  return {
-    status: result.status,
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
-  };
+  name?: string
+  database_name?: string
+  uuid?: string
+  database_id?: string
 }
 
 function fail(message: string): never {
-  console.error(`\n✖ ${message}\n`);
-  process.exit(1);
+  console.error(`\n✖ ${message}\n`)
+  process.exit(1)
 }
 
 function assertAuthenticated(): void {
-  const result = runWrangler(["whoami"]);
-  const output = `${result.stdout}\n${result.stderr}`;
-
-  if (result.status !== 0 || /not authenticated/i.test(output)) {
-    fail("Wrangler no está autenticado. Ejecuta `npx wrangler login` y vuelve a intentarlo.");
+  try {
+    assertWranglerAuthenticated(ROOT)
+  } catch (error) {
+    fail(error instanceof Error ? error.message : "Wrangler no está autenticado.")
   }
 }
 
 function normalizeD1List(value: unknown): D1Record[] {
   if (Array.isArray(value)) {
-    return value as D1Record[];
+    return value as D1Record[]
   }
 
   if (value && typeof value === "object") {
-    const record = value as { result?: unknown; databases?: unknown };
+    const record = value as { result?: unknown; databases?: unknown }
 
     if (Array.isArray(record.result)) {
-      return record.result as D1Record[];
+      return record.result as D1Record[]
     }
 
     if (Array.isArray(record.databases)) {
-      return record.databases as D1Record[];
+      return record.databases as D1Record[]
     }
   }
 
-  return [];
+  return []
 }
 
 function listD1Databases(): D1Record[] {
-  const result = runWrangler(["d1", "list", "--json"]);
+  const result = runWrangler(["d1", "list", "--json"])
 
   if (result.status !== 0) {
-    fail(`No se pudo listar D1.\n${result.stderr || result.stdout}`);
+    fail(`No se pudo listar D1.\n${result.stderr || result.stdout}`)
   }
 
   try {
-    const databases = normalizeD1List(JSON.parse(result.stdout));
+    const databases = normalizeD1List(JSON.parse(result.stdout))
 
     if (databases.length > 0) {
-      return databases;
+      return databases
     }
   } catch {
     // Se intenta el fallback de texto.
   }
 
   if (result.stdout.includes(DB_NAME)) {
-    return [{ name: DB_NAME }];
+    return [{ name: DB_NAME }]
   }
 
-  fail(`No se pudo interpretar la lista de D1.\n${result.stdout}`);
+  fail(`No se pudo interpretar la lista de D1.\n${result.stdout}`)
 }
 
 function findD1Database(): D1Record | undefined {
   return listD1Databases().find(
     (database) => database.name === DB_NAME || database.database_name === DB_NAME,
-  );
+  )
 }
 
 function syncD1Config(databaseId: string): void {
-  const config = readFileSync(CONFIG_PATH, "utf8");
-  const updated = config.replace(/("database_id"\s*:\s*")[^"]*(")/, `$1${databaseId}$2`);
+  const config = readFileSync(CONFIG_PATH, "utf8")
+  const updated = config.replace(/("database_id"\s*:\s*")[^"]*(")/, `$1${databaseId}$2`)
 
   if (updated !== config) {
-    writeFileSync(CONFIG_PATH, updated, "utf8");
-    console.log("✓ database_id actualizado en wrangler.jsonc.");
+    writeFileSync(CONFIG_PATH, updated, "utf8")
+    console.log("✓ database_id actualizado en wrangler.jsonc.")
   }
 }
 
 function ensureD1(): void {
-  const existing = findD1Database();
+  const existing = findD1Database()
 
   if (existing) {
-    console.log(`✓ D1 "${DB_NAME}" ya existe.`);
+    console.log(`✓ D1 "${DB_NAME}" ya existe.`)
 
-    const databaseId = existing.uuid ?? existing.database_id;
+    const databaseId = existing.uuid ?? existing.database_id
     if (databaseId) {
-      syncD1Config(databaseId);
+      syncD1Config(databaseId)
     } else {
       console.log(
         "  No se pudo leer el database_id desde `wrangler d1 list --json`; revísalo en wrangler.jsonc.",
-      );
+      )
     }
 
-    return;
+    return
   }
 
-  console.log(`→ Creando D1 "${DB_NAME}"...`);
+  console.log(`→ Creando D1 "${DB_NAME}"...`)
 
-  const result = runWrangler(["d1", "create", DB_NAME, "--update-config", "--binding", "DB"]);
+  const result = runWrangler(["d1", "create", DB_NAME, "--update-config", "--binding", "DB"])
 
   if (result.status !== 0) {
-    fail(`No se pudo crear D1.\n${result.stderr || result.stdout}`);
+    fail(`No se pudo crear D1.\n${result.stderr || result.stdout}`)
   }
 
-  console.log(`✓ D1 "${DB_NAME}" creada y binding actualizado.`);
+  console.log(`✓ D1 "${DB_NAME}" creada y binding actualizado.`)
 }
 
 function r2BucketExists(): boolean {
-  const result = runWrangler(["r2", "bucket", "list"]);
+  const result = runWrangler(["r2", "bucket", "list"])
 
   if (result.status !== 0) {
-    fail(`No se pudo listar R2.\n${result.stderr || result.stdout}`);
+    fail(`No se pudo listar R2.\n${result.stderr || result.stdout}`)
   }
 
-  return result.stdout.includes(BUCKET_NAME);
+  return result.stdout.includes(BUCKET_NAME)
 }
 
 function ensureR2(): void {
   if (r2BucketExists()) {
-    console.log(`✓ R2 "${BUCKET_NAME}" ya existe.`);
-    return;
+    console.log(`✓ R2 "${BUCKET_NAME}" ya existe.`)
+    return
   }
 
-  console.log(`→ Creando R2 "${BUCKET_NAME}"...`);
+  console.log(`→ Creando R2 "${BUCKET_NAME}"...`)
 
   const result = runWrangler([
     "r2",
@@ -164,38 +143,38 @@ function ensureR2(): void {
     "--update-config",
     "--binding",
     "MEDIA",
-  ]);
+  ])
 
   if (result.status !== 0) {
-    fail(`No se pudo crear R2.\n${result.stderr || result.stdout}`);
+    fail(`No se pudo crear R2.\n${result.stderr || result.stdout}`)
   }
 
-  console.log(`✓ R2 "${BUCKET_NAME}" creado y binding actualizado.`);
+  console.log(`✓ R2 "${BUCKET_NAME}" creado y binding actualizado.`)
 }
 
 function printSummary(): void {
-  const config = readFileSync(CONFIG_PATH, "utf8");
-  const databaseId = config.match(/"database_id"\s*:\s*"([^"]+)"/)?.[1];
+  const config = readFileSync(CONFIG_PATH, "utf8")
+  const databaseId = config.match(/"database_id"\s*:\s*"([^"]+)"/)?.[1]
 
-  console.log("\nConfiguración actual:");
-  console.log(`  wrangler.jsonc → ${CONFIG_PATH}`);
-  console.log(`  D1 database_id → ${databaseId ?? "no encontrado"}`);
-  console.log(`  R2 bucket     → ${BUCKET_NAME}`);
+  console.log("\nConfiguración actual:")
+  console.log(`  wrangler.jsonc → ${CONFIG_PATH}`)
+  console.log(`  D1 database_id → ${databaseId ?? "no encontrado"}`)
+  console.log(`  R2 bucket     → ${BUCKET_NAME}`)
   console.log(`
 Siguientes pasos:
   1. npx wrangler d1 migrations apply ${DB_NAME} --local
   2. npm run user:create
   3. npm run dev
   4. npm run deploy (cuando quieras publicar)
-`);
+`)
 }
 
 function main(): void {
-  console.log("Blog Manager · bootstrap de Cloudflare\n");
-  assertAuthenticated();
-  ensureD1();
-  ensureR2();
-  printSummary();
+  console.log("Blog Manager · bootstrap de Cloudflare\n")
+  assertAuthenticated()
+  ensureD1()
+  ensureR2()
+  printSummary()
 }
 
-main();
+main()

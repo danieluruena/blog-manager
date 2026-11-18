@@ -156,7 +156,8 @@ blog-manager/
 │  ├─ bootstrap.ts             # crea D1/R2 y deja los IDs listos
 │  └─ create-admin.ts          # crea el primer administrador
 ├─ migrations/
-│  ├─ 0001_initial.sql
+│  └─ 0000_initial.sql
+├─ seeds/
 │  └─ seed.sql
 ├─ tests/
 │  ├─ api/
@@ -839,7 +840,7 @@ Notas:
     "test:watch": "vitest",
     "db:migrate:local": "wrangler d1 migrations apply blog-manager-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply blog-manager-db --remote",
-    "db:seed": "wrangler d1 execute blog-manager-db --local --file=./migrations/seed.sql",
+    "db:seed": "wrangler d1 execute blog-manager-db --local --file=./seeds/seed.sql",
     "bootstrap": "tsx scripts/bootstrap.ts",
     "user:create": "tsx scripts/create-admin.ts",
     "cf-typegen": "wrangler types"
@@ -1003,10 +1004,10 @@ Pero en este proyecto también añadiría:
 | Usuarios | Multiusuario desde el esquema; un administrador inicial. |
 | IaC | `wrangler.jsonc` + script de bootstrap + migraciones; sin Terraform en el MVP. |
 
-Quedan por definir detalles menores antes de la Fase 0:
+Los detalles menores quedaron resueltos con los valores aprobados:
 
-1. Nombre del Worker y subdominio (`*.workers.dev`).
-2. Email y nombre del administrador inicial.
-3. Nombre visible de la aplicación (por defecto “Blog Manager”).
-4. ¿La UI de gestión de usuarios entra en el MVP o queda post-MVP? (propuesto: post-MVP; el esquema ya la soporta).
-5. ¿El rol `editor` podrá gestionar artículos de todos los blogs o solo de blogs asignados? (propuesto: todos, sin asignación por blog en el MVP).
+- Worker y subdominio: `blog-manager` en `*.workers.dev`.
+- Nombre visible de la aplicación: “Blog Manager”.
+- UI de gestión de usuarios: post-MVP; el esquema ya la soporta.
+- Rol `editor`: acceso a todos los blogs; la asignación por blog queda para después.
+- Email y nombre del administrador inicial: se definen al ejecutar `npm run user:create`.
