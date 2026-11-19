@@ -7,7 +7,7 @@ export type ArticleStatus = (typeof articleStatusValues)[number]
 export const maxImageBytes = 5 * 1024 * 1024
 export const maxSourceImageBytes = 20 * 1024 * 1024
 export const maxImageDimension = 2560
-export const webpQuality = 0.92
+export const webpQuality = 0.75
 
 export const imageMimeTypeValues = [
   "image/avif",

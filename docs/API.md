@@ -230,7 +230,7 @@ Reglas:
 Límites y formatos:
 
 - El endpoint acepta **solo `image/webp`**. El editor convierte JPEG, PNG, WebP y AVIF a WebP en el navegador antes de subirlos; los GIF animados no están soportados.
-- Optimización en el cliente: lado mayor máximo **2560 px** y calidad **0.92**. La imagen de origen puede pesar hasta **20 MB**.
+- Optimización en el cliente: lado mayor máximo **2560 px** y calidad **0.75**. La imagen de origen puede pesar hasta **20 MB**.
 - Tamaño máximo del WebP subido: **5 MB**. Por encima responde `413 FILE_TOO_LARGE`.
 - Se comprueban los bytes mágicos: si el contenido no es un WebP válido responde `415 INVALID_IMAGE`, y si no se declara como `image/webp`, `415 UNSUPPORTED_MEDIA_TYPE`.
 - La respuesta incluye una URL absoluta (`url`) lista para insertar en markdown:

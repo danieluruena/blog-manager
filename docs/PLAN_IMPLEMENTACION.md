@@ -387,7 +387,7 @@ Subir imágenes desde el editor y servirlas con caché.
 - [x] Crear bucket R2 y binding `MEDIA` (el bootstrap ya lo deja preparado).
 - [x] Endpoint `POST /api/admin/blogs/:blogId/media` (multipart):
   - [x] Validar tamaño (≤ 5 MB) y que sea WebP.
-  - [x] Optimizar en el navegador: conversión a WebP, lado mayor ≤ 2560 px y calidad 0.92.
+  - [x] Optimizar en el navegador: conversión a WebP, lado mayor ≤ 2560 px y calidad 0.75.
   - [x] Generar clave `blogs/<blogId>/<uuid>.<ext>`.
   - [x] Guardar objeto en R2 en streaming y metadata en D1.
   - [x] Devolver URL pública.
