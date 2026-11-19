@@ -208,6 +208,8 @@ la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
   una bajo demanda.
 - La CSP usa `style-src 'unsafe-inline'` porque Radix y otros componentes usan
   atributos `style`. Los scripts no admiten `unsafe-inline` en producción.
+- La CSP permite `media-src 'self' blob: https:` para previsualizar vídeos
+  locales antes de subirlos.
 - No hay CLI de reseteo de contraseña (ver procedimiento arriba).
 - Una subida que falla después de guardar la imagen puede dejar un medio sin
   asignar; se limpia al borrar el blog. Se puede añadir un cron en el futuro.

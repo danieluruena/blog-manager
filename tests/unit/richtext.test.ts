@@ -56,6 +56,35 @@ describe("rich text rendering", () => {
     expect(html).not.toContain("<script>")
   })
 
+  it("convierte un nodo de vídeo a HTML seguro", () => {
+    const html = renderArticleHtml(
+      documentJson([
+        {
+          type: "video",
+          attrs: {
+            src: "https://media.example.com/clip.webm",
+            title: "Demostración",
+          },
+        },
+      ]),
+    )
+
+    expect(html).toContain("<video")
+    expect(html).toContain('src="https://media.example.com/clip.webm"')
+    expect(html).toContain("controls")
+    expect(html).toContain("playsinline")
+    expect(html).toContain('title="Demostración"')
+    expect(html).toContain("max-width: 100%")
+  })
+
+  it("rechaza vídeos con URLs no permitidas", () => {
+    expect(() =>
+      renderArticleHtml(
+        documentJson([{ type: "video", attrs: { src: "blob:http://localhost:5173/clip" } }]),
+      ),
+    ).toThrow(ApiError)
+  })
+
   it("rechaza documentos inválidos", () => {
     expect(() => renderArticleHtml("no es json")).toThrow(ApiError)
     expect(() => renderArticleHtml(JSON.stringify({ type: "paragraph" }))).toThrow(ApiError)

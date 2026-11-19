@@ -9,12 +9,13 @@ Chunks principales:
 
 | Chunk                          | Tamaño    | Gzip      | Cuándo se carga            |
 | ------------------------------ | --------- | --------- | -------------------------- |
-| `use-articles-*.js`            | 405.29 kB | 127.78 kB | Rutas de artículos y editor |
-| `index-*.js`                   | 296.07 kB | 93.87 kB  | Entrada de la SPA          |
-| `api-*.js`                     | 112.88 kB | 36.49 kB  | Cliente HTTP compartido    |
-| `schemas-*.js`                 | 85.18 kB  | 24.56 kB  | Validación compartida      |
-| `form-*.js`                    | 45.48 kB  | 15.64 kB  | Formularios                |
-| `tiptap-editor-*.js`           | 48.57 kB  | 15.59 kB  | Solo al abrir el editor    |
+| `use-articles-*.js`            | 405.58 kB | 127.87 kB | Rutas de artículos y editor |
+| `index-*.js`                   | 296.16 kB | 93.90 kB  | Entrada de la SPA          |
+| `src-*.js` (Mediabunny)        | 487.85 kB | 124.44 kB | Solo al insertar un vídeo  |
+| `api-*.js`                     | 112.92 kB | 36.52 kB  | Cliente HTTP compartido    |
+| `schemas-*.js`                 | 85.26 kB  | 24.61 kB  | Validación compartida      |
+| `form-*.js`                    | 45.52 kB  | 15.67 kB  | Formularios                |
+| `tiptap-editor-*.js`           | 49.55 kB  | 15.87 kB  | Solo al abrir el editor    |
 
 Notas:
 
@@ -22,10 +23,12 @@ Notas:
   componente se descarga con `import()` al abrir
   `/blogs/:blogId/articles/new` o `/:articleId`. El chunk `use-articles` agrupa
   la página de artículos y las dependencias compartidas del editor.
+- Mediabunny (conversión de vídeo a WebM) se carga con `import()` solo al
+  seleccionar un vídeo, no al abrir el editor.
 - No hay código de servidor en el cliente: no aparecen `AUTH_PEPPER`,
   `drizzle-orm` ni `D1Database` en `dist/client/assets/*.js`. El renderizador
   HTML (`src/server/lib/richtext.ts`) solo se ejecuta en el Worker.
-- El build ya no genera el aviso de chunk >500 kB.
+- El build no genera el aviso de chunk >500 kB en el bundle inicial.
 
 ## Consultas D1
 

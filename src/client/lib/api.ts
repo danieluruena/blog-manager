@@ -193,7 +193,7 @@ export const api = {
     })
   },
 
-  uploadImage(blogId: string, file: File): Promise<DataResponse<MediaDto>> {
+  uploadMedia(blogId: string, file: File): Promise<DataResponse<MediaDto>> {
     const body = new FormData()
     body.set("file", file)
 

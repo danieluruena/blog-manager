@@ -1,6 +1,8 @@
 import { Loader2 } from "lucide-react"
 import { lazy, Suspense } from "react"
 
+import type { VideoOptimizationHandlers } from "../../lib/video-optimization"
+
 const TiptapEditor = lazy(() =>
   import("./tiptap-editor").then((module) => ({ default: module.TiptapEditor })),
 )
@@ -10,11 +12,13 @@ export function RichTextEditor({
   initialHtml,
   onChange,
   onUploadImage,
+  onOptimizeVideo,
 }: {
   initialJson: string | null
   initialHtml: string
   onChange: (bodyJson: string) => void
   onUploadImage: (file: File) => Promise<string>
+  onOptimizeVideo: (file: File, handlers: VideoOptimizationHandlers) => void
 }) {
   return (
     <Suspense
@@ -30,6 +34,7 @@ export function RichTextEditor({
         initialHtml={initialHtml}
         onChange={onChange}
         onUploadImage={onUploadImage}
+        onOptimizeVideo={onOptimizeVideo}
       />
     </Suspense>
   )
