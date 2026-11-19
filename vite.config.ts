@@ -14,6 +14,14 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    dedupe: [
+      "@tiptap/pm",
+      "prosemirror-model",
+      "prosemirror-state",
+      "prosemirror-tables",
+      "prosemirror-transform",
+      "prosemirror-view",
+    ],
     alias: {
       "@client": fileURLToPath(new URL("./src/client", import.meta.url)),
       "@server": fileURLToPath(new URL("./src/server", import.meta.url)),

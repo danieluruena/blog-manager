@@ -78,12 +78,12 @@ export function mediaUrl(blogId: string, filename: string): string {
 const mediaPathPattern =
   /\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:avif|gif|jpe?g|png|webp))/gi
 
-/** Nombres de fichero de las imágenes del blog referenciadas en un markdown. */
-export function extractMediaFilenames(markdown: string, blogId: string): string[] {
+/** Nombres de fichero de las imágenes del blog referenciadas en el HTML. */
+export function extractMediaFilenames(html: string, blogId: string): string[] {
   const filenames = new Set<string>()
   const normalizedBlogId = blogId.toLowerCase()
 
-  for (const match of markdown.matchAll(mediaPathPattern)) {
+  for (const match of html.matchAll(mediaPathPattern)) {
     const matchBlogId = match[1]
     const filename = match[2]
 

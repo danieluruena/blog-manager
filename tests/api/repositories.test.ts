@@ -61,7 +61,16 @@ function makeArticle(blogId: string, overrides: Partial<NewArticle> = {}): NewAr
     slug: `articulo-${id.slice(0, 8)}`,
     excerpt: "Resumen de prueba",
     author: "Autor de prueba",
-    body: "# Cuerpo del artículo",
+    body: "<p>Cuerpo del artículo</p>",
+    bodyJson: JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Cuerpo del artículo" }],
+        },
+      ],
+    }),
     status: "draft",
     createdAt: BASE_TIME,
     publishedAt: null,

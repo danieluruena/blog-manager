@@ -187,7 +187,7 @@ Todos los artículos están anidados bajo un blog:
 | -------- | ---------------------------------------------- | ------------------------------ |
 | `GET`    | `/api/admin/blogs/:blogId/articles`            | Lista con filtros y paginación |
 | `POST`   | `/api/admin/blogs/:blogId/articles`            | Crea un artículo               |
-| `GET`    | `/api/admin/blogs/:blogId/articles/:articleId` | Detalle con `body`             |
+| `GET`    | `/api/admin/blogs/:blogId/articles/:articleId` | Detalle con `body`, `bodyJson` y `coverImage` |
 | `PATCH`  | `/api/admin/blogs/:blogId/articles/:articleId` | Actualiza campos parciales     |
 | `DELETE` | `/api/admin/blogs/:blogId/articles/:articleId` | Elimina el artículo            |
 
@@ -206,15 +206,35 @@ Crear artículo:
   "slug": "como-empezar",
   "excerpt": "Una introducción breve",
   "author": "Daniel",
-  "body": "## Introducción\n\nTexto en **markdown**.",
+  "bodyJson": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Introducción\"}]}]}",
+  "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
   "status": "draft",
   "publishedAt": null
 }
 ```
 
+`bodyJson` es el documento JSON de Tiptap serializado como cadena (máximo 1 MB). El servidor lo valida, lo convierte a HTML con una lista blanca de nodos y marcas, y guarda ambos:
+
+- `bodyJson`: fuente de verdad editable.
+- `body`: HTML generado, listo para servir en la API pública.
+
+El HTML solo admite párrafos, títulos (`h1`–`h3`), listas, citas, código, enlaces, imágenes, separadores y las marcas de negrita, cursiva, subrayado, tachado, código, resaltado, color de texto, familia y tamaño de fuente, además de la alineación. Cualquier nodo o atributo fuera de esa lista responde `400 INVALID_CONTENT`.
+
+Un documento mínimo válido es:
+
+```json
+{
+  "type": "doc",
+  "content": [{ "type": "paragraph" }]
+}
+```
+
+`coverImage` es opcional y acepta una URL `http(s)` o una ruta absoluta. Normalmente será la URL devuelta por el endpoint de imágenes. En un `PATCH`, `null` elimina la portada y omitirlo deja la actual. La portada se asocia al artículo y se elimina de R2 y D1 cuando se reemplaza, se quita o se borra el artículo.
+
 Reglas:
 
 - `blogId` no se envía en el body: viene de la URL y es inmutable.
+- `excerpt` es la descripción corta del artículo; en el panel se muestra como «Descripción».
 - El slug es único dentro del blog.
 - Si se publica (`published` o `featured`) sin `publishedAt`, el servidor asigna la fecha actual.
 - Un artículo de otro blog bajo la URL de este responde `404`, no `403`.
@@ -233,7 +253,7 @@ Límites y formatos:
 - Optimización en el cliente: lado mayor máximo **2560 px** y calidad **0.75**. La imagen de origen puede pesar hasta **20 MB**.
 - Tamaño máximo del WebP subido: **5 MB**. Por encima responde `413 FILE_TOO_LARGE`.
 - Se comprueban los bytes mágicos: si el contenido no es un WebP válido responde `415 INVALID_IMAGE`, y si no se declara como `image/webp`, `415 UNSUPPORTED_MEDIA_TYPE`.
-- La respuesta incluye una URL absoluta (`url`) lista para insertar en markdown:
+- La respuesta incluye una URL absoluta (`url`) lista para usar como `src` de un nodo `image`:
 
 ```json
 {
@@ -251,7 +271,7 @@ Límites y formatos:
 
 La entrega usa `Cache-Control: public, max-age=31536000, immutable`, `ETag` (responde `304` con `If-None-Match`), `Content-Type` del objeto y `X-Content-Type-Options: nosniff`.
 
-Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes presentes en el markdown quedan asociadas a él; las que se han quitado se eliminan de R2 y D1. Una imagen pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus imágenes, y al eliminar un blog sin artículos se limpian las que hayan quedado sin asignar.
+Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes presentes en el documento y la portada quedan asociadas a él; las que se han quitado se eliminan de R2 y D1. Una imagen pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus imágenes, incluida la portada, y al eliminar un blog sin artículos se limpian las que hayan quedado sin asignar.
 
 ### Estadísticas
 
@@ -281,7 +301,7 @@ No usa cookies. Solo devuelve blogs activos y artículos en estado `published` o
 | ------ | ------------------------------------------------------ | ---------------------------------- |
 | `GET`  | `/api/public/v1/blogs/:blogSlug`                       | Metadatos del blog                 |
 | `GET`  | `/api/public/v1/blogs/:blogSlug/articles`              | Lista visible, paginada por cursor |
-| `GET`  | `/api/public/v1/blogs/:blogSlug/articles/:articleSlug` | Detalle con `body`                 |
+| `GET`  | `/api/public/v1/blogs/:blogSlug/articles/:articleSlug` | Detalle con `body` en HTML y `coverImage` |
 
 Query params de la lista:
 
@@ -302,9 +322,10 @@ Respuesta:
   "data": [
     {
       "id": "uuid",
-      "title": "Guía rápida de markdown",
-      "slug": "guia-rapida-markdown",
-      "excerpt": "Los elementos de markdown que más vas a usar.",
+      "title": "Cómo empezar",
+      "slug": "como-empezar",
+      "excerpt": "Una introducción breve.",
+      "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
       "author": "Daniel",
       "status": "featured",
       "createdAt": "2026-11-03T10:00:00.000Z",
@@ -317,6 +338,48 @@ Respuesta:
   }
 }
 ```
+
+Detalle de artículo:
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "title": "Cómo empezar",
+    "slug": "como-empezar",
+    "excerpt": "Una introducción breve",
+    "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
+    "author": "Daniel",
+    "status": "published",
+    "body": "<p>Texto con <span style=\"color: #dc2626; font-family: Lora, Georgia, serif\">estilo</span>.</p>",
+    "createdAt": "2026-11-03T10:00:00.000Z",
+    "publishedAt": "2026-11-12T10:00:00.000Z",
+    "updatedAt": "2026-11-12T10:00:00.000Z",
+    "blog": {
+      "name": "Página A",
+      "slug": "pagina-a",
+      "siteUrl": "https://pagina-a.example.com"
+    }
+  }
+}
+```
+
+El campo `body` ya es HTML seguro generado en el servidor: la web consumidora puede insertarlo directamente sin volver a renderizar markdown. `coverImage` es la miniatura del artículo y puede ser `null`.
+
+### Fuentes en las webs consumidoras
+
+El editor permite aplicar un catálogo de 106 familias populares de Google Fonts (sans, serif, display, mono y manuscritas) con buscador, además de fuentes del sistema. El HTML guarda el nombre de la familia con alternativas locales (`Lora, Georgia, serif`), pero la web consumidora debe cargar la fuente para que se vea exactamente igual que en el editor. Por ejemplo, en el `<head>`:
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&display=swap"
+  rel="stylesheet"
+/>
+```
+
+Si una web no las carga, el navegador usará las alternativas locales indicadas en `font-family` (por ejemplo, Georgia para Lora).
 
 ### CORS
 

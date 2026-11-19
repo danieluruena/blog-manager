@@ -111,7 +111,7 @@ export function AppShell() {
         Saltar al contenido
       </a>
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        <aside className="hidden h-screen w-[264px] shrink-0 border-r border-line bg-surface/40 lg:sticky lg:top-0 lg:flex lg:flex-col">
+        <aside className="hidden h-screen w-[264px] shrink-0 border-r border-line bg-surface/70 lg:sticky lg:top-0 lg:flex lg:flex-col">
           <SidebarContent
             user={user}
             blogs={blogList}

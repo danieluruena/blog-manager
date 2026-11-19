@@ -8,6 +8,7 @@ import {
   createTestUser,
   jsonRequest,
   loginAs,
+  richTextJson,
 } from "./helpers"
 
 beforeEach(async () => {
@@ -182,11 +183,31 @@ describe("admin API", () => {
           title: "Artículo del editor",
           author: "Editor",
           excerpt: "Resumen",
-          body: "# Contenido",
+          bodyJson: richTextJson("Contenido"),
         },
       }),
     )
     expect(createArticle.status).toBe(201)
+  })
+
+  it("rechaza una URL de portada no válida", async () => {
+    const { adminCookie } = await setupAdmin()
+    const blog = await createTestBlog({ name: "Blog de validación" })
+
+    const response = await apiFetch(
+      jsonRequest(`/api/admin/blogs/${blog.id}/articles`, {
+        method: "POST",
+        cookie: adminCookie,
+        body: {
+          title: "Portada inválida",
+          author: "Admin",
+          bodyJson: richTextJson("Hola"),
+          coverImage: "javascript:alert(1)",
+        },
+      }),
+    )
+
+    expect(response.status).toBe(400)
   })
 
   it("gestiona artículos, publica y bloquea el borrado del blog", async () => {
@@ -201,7 +222,8 @@ describe("admin API", () => {
           title: "Cómo empezar",
           author: "Daniel",
           excerpt: "Una introducción",
-          body: "# Hola",
+          bodyJson: richTextJson("Hola"),
+          coverImage: "https://media.example.com/portada.webp",
         },
       }),
     )
@@ -209,11 +231,18 @@ describe("admin API", () => {
     expect(create.status).toBe(201)
 
     const created = (await create.json()) as {
-      data: { id: string; slug: string; status: string; publishedAt: string | null }
+      data: {
+        id: string
+        slug: string
+        status: string
+        coverImage: string | null
+        publishedAt: string | null
+      }
     }
 
     expect(created.data.slug).toBe("como-empezar")
     expect(created.data.status).toBe("draft")
+    expect(created.data.coverImage).toBe("https://media.example.com/portada.webp")
     expect(created.data.publishedAt).toBeNull()
 
     const publish = await apiFetch(
@@ -242,12 +271,13 @@ describe("admin API", () => {
     expect(list.status).toBe(200)
 
     const listBody = (await list.json()) as {
-      data: Array<{ id: string }>
+      data: Array<{ id: string; coverImage: string | null }>
       meta: { total: number }
     }
 
     expect(listBody.meta.total).toBe(1)
     expect(listBody.data[0]?.id).toBe(created.data.id)
+    expect(listBody.data[0]?.coverImage).toBe("https://media.example.com/portada.webp")
 
     const detail = await apiFetch(
       jsonRequest(`/api/admin/blogs/${blog.id}/articles/${created.data.id}`, {
@@ -256,8 +286,12 @@ describe("admin API", () => {
     )
     expect(detail.status).toBe(200)
 
-    const detailBody = (await detail.json()) as { data: { body: string } }
-    expect(detailBody.data.body).toBe("# Hola")
+    const detailBody = (await detail.json()) as {
+      data: { body: string; bodyJson: string | null; coverImage: string | null }
+    }
+    expect(detailBody.data.body).toBe("<p>Hola</p>")
+    expect(detailBody.data.bodyJson).toContain("Hola")
+    expect(detailBody.data.coverImage).toBe("https://media.example.com/portada.webp")
 
     const deleteBlog = await apiFetch(
       jsonRequest(`/api/admin/blogs/${blog.id}`, {

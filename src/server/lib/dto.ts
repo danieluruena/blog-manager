@@ -59,6 +59,7 @@ export function toArticleSummaryDto(article: ArticleSummary): ArticleSummaryDto 
     title: article.title,
     slug: article.slug,
     excerpt: article.excerpt,
+    coverImage: article.coverImage,
     author: article.author,
     status: article.status,
     createdAt: article.createdAt,
@@ -71,6 +72,7 @@ export function toArticleDto(article: Article): ArticleDto {
   return {
     ...toArticleSummaryDto(article),
     body: article.body,
+    bodyJson: article.bodyJson,
   }
 }
 
@@ -80,6 +82,7 @@ export function toPublicArticleSummaryDto(article: ArticleSummary): PublicArticl
     title: article.title,
     slug: article.slug,
     excerpt: article.excerpt,
+    coverImage: article.coverImage,
     author: article.author,
     status: article.status,
     createdAt: article.createdAt,

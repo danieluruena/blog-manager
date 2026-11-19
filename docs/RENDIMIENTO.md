@@ -9,21 +9,23 @@ Chunks principales:
 
 | Chunk                          | Tamaño    | Gzip      | Cuándo se carga            |
 | ------------------------------ | --------- | --------- | -------------------------- |
-| `mdx-editor-*.js`              | 747.95 kB | 234.06 kB | Solo al abrir el editor    |
-| `index-*.js`                   | 276.16 kB | 86.13 kB  | Entrada de la SPA          |
-| `dist-CvhAxO17.js`             | 316.16 kB | 102.54 kB | Vendor compartido          |
-| `button-*.js`                  | 146.12 kB | 47.27 kB  | Componentes UI             |
-| `dist-DW24tMXg.js`             | 103.89 kB | 34.75 kB  | Vendor compartido          |
-| `form-*.js`                    | 45.51 kB  | 15.66 kB  | Formularios                |
+| `use-articles-*.js`            | 405.29 kB | 127.78 kB | Rutas de artículos y editor |
+| `index-*.js`                   | 296.07 kB | 93.87 kB  | Entrada de la SPA          |
+| `api-*.js`                     | 112.88 kB | 36.49 kB  | Cliente HTTP compartido    |
+| `schemas-*.js`                 | 85.18 kB  | 24.56 kB  | Validación compartida      |
+| `form-*.js`                    | 45.48 kB  | 15.64 kB  | Formularios                |
+| `tiptap-editor-*.js`           | 48.57 kB  | 15.59 kB  | Solo al abrir el editor    |
 
 Notas:
 
-- El editor (MDXEditor + CodeMirror) está **fuera del bundle inicial**: se
-  descarga con `import()` al abrir `/blogs/:blogId/articles/new` o `/:articleId`.
+- El editor (Tiptap + ProseMirror) está **fuera del bundle inicial**: el
+  componente se descarga con `import()` al abrir
+  `/blogs/:blogId/articles/new` o `/:articleId`. El chunk `use-articles` agrupa
+  la página de artículos y las dependencias compartidas del editor.
 - No hay código de servidor en el cliente: no aparecen `AUTH_PEPPER`,
-  `drizzle-orm` ni `D1Database` en `dist/client/assets/*.js`.
-- El aviso de Vite por el chunk >500 kB es esperado y aceptado: es el editor
-  cargado bajo demanda, no la ruta crítica.
+  `drizzle-orm` ni `D1Database` en `dist/client/assets/*.js`. El renderizador
+  HTML (`src/server/lib/richtext.ts`) solo se ejecuta en el Worker.
+- El build ya no genera el aviso de chunk >500 kB.
 
 ## Consultas D1
 

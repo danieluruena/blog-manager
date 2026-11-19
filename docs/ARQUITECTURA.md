@@ -98,11 +98,11 @@ D1 tiene límites de 500 MB por base en el plan gratuito y 10 GB en el plan pago
 | Router | React Router |
 | Data fetching | TanStack Query |
 | Formularios | React Hook Form + Zod |
-| Editor markdown | MDXEditor (WYSIWYG que guarda markdown) |
+| Editor rich text | Tiptap (ProseMirror) con extensiones propias |
 | Fechas | `date-fns` con locale `es` |
 | Toasts | Sonner |
 
-> El editor se cargará de forma diferida (`lazy`) porque es la dependencia más pesada del frontend.
+> El editor se carga de forma diferida (`lazy`) porque es la dependencia más pesada del frontend.
 
 ---
 
@@ -226,6 +226,8 @@ erDiagram
         text excerpt
         text author
         text body
+        text body_json
+        text cover_image
         text status
         text created_at
         text published_at
@@ -300,6 +302,8 @@ CREATE TABLE articles (
   excerpt      TEXT NOT NULL DEFAULT '',
   author       TEXT NOT NULL,
   body         TEXT NOT NULL DEFAULT '',
+  body_json    TEXT,
+  cover_image  TEXT,
   status       TEXT NOT NULL DEFAULT 'draft'
                CHECK (status IN ('draft', 'published', 'hidden', 'featured')),
   created_at   TEXT NOT NULL,
@@ -381,7 +385,9 @@ CREATE TABLE media (
 | `slug` | string | Único **por blog**; 1–200; se genera desde `title`, editable. |
 | `excerpt` | string | Descripción corta, hasta 300 caracteres. |
 | `author` | string | 1–120 caracteres, obligatorio. |
-| `body` | markdown | Hasta 200.000 caracteres (muy por debajo del límite de fila de D1). |
+| `body` | HTML | HTML generado en el servidor a partir de `body_json`; es lo que sirve la API pública. |
+| `body_json` | JSON (texto) | Documento Tiptap serializado, hasta 1 MB. Fuente de verdad editable. `NULL` en artículos anteriores a la migración `0002`. |
+| `cover_image` | URL o `NULL` | Imagen de portada. Se muestra en listados y en la API pública; se sube con el mismo endpoint de medios y se limpia al reemplazarla o quitarla. |
 | `status` | enum | `draft`, `published`, `hidden`, `featured`. |
 | `created_at` | ISO 8601 | UTC, generado por el servidor. Inmutable. |
 | `published_at` | ISO 8601 o `null` | Fecha de publicación editable. Si se publica sin fecha, el servidor pone `now`. |
@@ -551,7 +557,7 @@ Orden público: `published_at DESC, id DESC`. Respuesta:
 }
 ```
 
-El detalle público incluye `body` (markdown) y los datos del blog:
+El detalle público incluye `body` en HTML ya sanitizado y los datos del blog:
 
 ```json
 {
@@ -560,8 +566,9 @@ El detalle público incluye `body` (markdown) y los datos del blog:
     "title": "Mi artículo",
     "slug": "mi-articulo",
     "excerpt": "Resumen corto",
+    "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
     "author": "Autor",
-    "body": "# Título\n\nContenido en **markdown**...",
+    "body": "<p>Contenido con <span style=\"color: #dc2626\">estilo</span>…</p>",
     "status": "published",
     "createdAt": "...",
     "publishedAt": "...",
@@ -598,7 +605,8 @@ Crear artículo:
   "slug": "como-empezar",
   "excerpt": "Una introducción breve.",
   "author": "Primigenios",
-  "body": "## Introducción\n\nTexto en **markdown**.",
+  "bodyJson": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Introducción\"}]}]}",
+  "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
   "status": "draft",
   "publishedAt": null
 }
@@ -678,7 +686,7 @@ Se implementa autenticación propia, sin Cloudflare Access, para que funcione en
 
 - **SQL:** siempre prepared statements con `bind()`; nunca interpolación.
 - **Validación:** Zod en todos los bodies, params y query strings.
-- **Markdown:** se guarda tal cual; la vista previa del admin se sanitiza con `rehype-sanitize`. Las webs consumidoras deben renderizar con un sanitizador si aceptan contenido no confiable.
+- **Rich text:** el servidor convierte el JSON de Tiptap a HTML con una lista blanca de nodos y marcas; nunca guarda HTML enviado por el cliente. Los estilos de color, familia y tamaño se validan con expresiones regulares y las URLs de enlaces e imágenes se restringen a `http(s)`, `mailto`, `tel`, rutas absolutas y anclas. La API pública sirve ese HTML ya seguro.
 - **Cabeceras:** `secureHeaders` de Hono (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy`).
 - **CORS:** solo en la API pública; sin credenciales; `Access-Control-Allow-Origin` calculado desde `site_url` + `allowed_origins`; `Vary: Origin`.
 - **Rate limiting:** login (tabla `auth_attempts`) y API pública (límite por IP, Workers Rate Limiting binding o contador en D1).
@@ -732,8 +740,8 @@ Tipografía:
 2. **Panel:** 4 tarjetas de métricas (blogs, blogs activos, artículos, publicados), actividad reciente y resumen por blog.
 3. **Blogs:** grid de tarjetas con nombre, descripción, URL, estado, número de artículos y acciones. Crear/editar en un drawer o página dedicada.
 4. **Workspace del blog:** cabecera con identidad del blog, enlace al sitio, toggle activo/inactivo y botón “Nuevo artículo”; tabs “Artículos” y “Ajustes”. En Ajustes se editan `site_url`, `allowed_origins`, descripción y estado.
-5. **Artículos:** barra de filtros (búsqueda, estado, orden), tabla con título, autor, estado, fecha de publicación, actualización y acciones. Paginación.
-6. **Editor de artículo:** título grande, panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug), editor markdown con toolbar y vista previa, barra de acciones fija (Guardar, Cancelar, Publicar). Aviso de cambios sin guardar. Contador de palabras. Pegar o arrastrar imágenes las sube a R2 y las inserta en markdown.
+5. **Artículos:** barra de filtros (búsqueda, estado, orden), tabla en escritorio y tarjetas en móvil con portada, título, descripción, estado, fecha y acciones. Paginación.
+6. **Editor de artículo:** título, portada, descripción y vista previa de la miniatura en dos configuraciones en la columna principal; panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug); editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes las optimiza a WebP y las sube a R2 al guardar.
 7. **Usuarios (post-MVP):** lista de usuarios, roles y estado; solo visible para `admin`.
 
 ### 9.4. Componentes y UX
@@ -765,21 +773,23 @@ No habrá una ruta global de artículos ni un buscador que mezcle artículos de 
 
 ---
 
-## 10. Editor markdown e imágenes
+## 10. Editor rich text e imágenes
 
-- **Formato persistido:** markdown puro en `articles.body`. Nada de HTML propietario ni JSON de editor.
-- **Editor:** MDXEditor, que ofrece experiencia WYSIWYG y serializa a markdown. Incluye toolbar (títulos, negrita, cursiva, listas, enlaces, citas, código, tablas) y un modo “ver markdown”. La subida de imágenes se conecta con `imageUploadHandler` y un manejador de `paste`/`drop` para cubrir el copiar/pegar.
-- **Vista previa:** renderizado con `react-markdown` + `remark-gfm` + `rehype-sanitize` en el admin, o el preview propio del editor. Los sitios públicos renderizan el markdown con su propia librería.
-- **Imágenes (MVP):**
+- **Formato persistido:** `articles.body_json` guarda el documento JSON de Tiptap; `articles.body` guarda el HTML generado por el servidor. El JSON es la fuente de verdad editable y el HTML es lo que consume la API pública.
+- **Editor:** Tiptap 3 sobre ProseMirror, con toolbar de títulos (`h1`–`h3`), negrita, cursiva, subrayado, tachado, código en línea, listas, citas, bloque de código, separador, enlaces, imágenes, alineación, familia tipográfica, tamaño, color de texto y resaltado. Se carga con `React.lazy` para no engordar el bundle inicial.
+- **Extensiones compartidas:** `src/shared/richtext.ts` define las extensiones que usan tanto el editor como el renderizador del servidor, para que ambos acepten exactamente el mismo subconjunto.
+- **Renderizado seguro:** `src/server/lib/richtext.ts` recorre el JSON con una lista blanca de nodos y marcas, escapa texto y atributos, valida colores (`#rgb`, `#rrggbb`, `rgb()`, `hsl()`), familias (`[a-zA-Z0-9 ,'"-]`), tamaños (`px`, `rem`, `em`) y URLs. No usa DOM ni `happy-dom`, así que funciona igual en Workers y en tests. Un documento inválido responde `400 INVALID_CONTENT`.
+- **Fuentes:** el editor ofrece un catálogo de 106 Google Fonts populares con buscador (sans, serif, display, mono y manuscritas) y alternativas del sistema. La hoja de cada fuente se inyecta bajo demanda al seleccionarla o previsualizarla. El HTML guarda la familia con fallbacks locales; la web consumidora debe cargar las Google Fonts que use (ver `docs/API.md`).
+- **Portada:** el formulario incluye un campo con previsualización que usa el mismo pipeline de optimización y subida diferida que las imágenes del contenido. Se guarda en `articles.cover_image`, se muestra junto al título en el listado y se expone como `coverImage` en la API. Al reemplazarla o quitarla, la anterior se elimina de R2 y D1.
+- **Imágenes:**
   - El editor permite pegar desde el portapapeles, arrastrar y soltar, o elegir un archivo.
-  - Cada imagen se sube inmediatamente a `POST /api/admin/blogs/:blogId/media` y se inserta `![alt](url)` en la posición del cursor.
-  - La URL devuelta es `https://<worker>.workers.dev/media/<blogId>/<uuid>.<ext>`.
-  - Mientras sube, se muestra un placeholder; si falla, un toast con opción de reintentar.
-  - Entrega con `Cache-Control: public, max-age=31536000, immutable` y ETag.
-  - Al borrar un blog sin artículos, borrar sus objetos de R2 en `ctx.waitUntil()` antes de eliminar la fila (la metadata de `media` cae en cascada).
+  - En el navegador se optimiza a WebP (lado mayor máximo 2560 px, calidad 0.75) y se muestra con una URL `blob:`.
+  - La subida es diferida: al guardar, solo se suben las imágenes que siguen en el documento (`extractBlobImageUrls`). Las descartadas nunca llegan a R2.
+  - Se reemplazan las URLs `blob:` por las públicas antes de enviar `bodyJson`. Las imágenes retiradas de un artículo existente se eliminan de R2 y D1.
+  - La URL es `https://<worker>.workers.dev/media/<blogId>/<uuid>.webp`, servida con `Cache-Control: public, max-age=31536000, immutable` y ETag.
   - También se puede insertar una URL externa manualmente.
-- **Límites:** 200.000 caracteres de body, 5 MB por imagen (WebP optimizado en el navegador).
-- **Autoguardado:** no en MVP. Sí aviso de cambios sin guardar y guardado explícito. Se puede añadir autosave con debounce en una fase posterior.
+- **Límites:** 1 MB de `body_json`, 5 MB por imagen (WebP optimizado en el navegador).
+- **Autoguardado:** no en MVP. Sí aviso de cambios sin guardar, guardado explícito y `Ctrl/Cmd + S`.
 
 ---
 
@@ -921,7 +931,7 @@ Pero en este proyecto también añadiría:
 - Evitar N+1: `JOIN` o subconsultas para `articleCount` y datos del blog.
 - Paginación en todas las listas.
 - `EXPLAIN QUERY PLAN` para validar índices.
-- Rutas del editor con `React.lazy` (MDXEditor pesa).
+- Rutas del editor con `React.lazy` (Tiptap + ProseMirror pesan ~35 kB gzip en su propio chunk).
 - Assets con hash e `immutable`; HTML con revalidación.
 - API pública con `Cache-Control: public, max-age=60, stale-while-revalidate=300`, `Vary: Origin` y ETag. Invalidación por TTL corto en MVP; purga global vía API de Cloudflare en una fase posterior.
 - Imágenes de R2 con `Cache-Control: public, max-age=31536000, immutable`.
@@ -983,9 +993,9 @@ Pero en este proyecto también añadiría:
 | Pérdida de la contraseña del único admin | CLI de reseteo con acceso a D1/Wrangler; documentar el procedimiento; futuro reset por email. |
 | Borrar un blog con artículos | Bloqueo `409` + FK `RESTRICT` + UI que recomienda desactivar. |
 | CORS no es una barrera de seguridad | Documentar que los artículos son públicos; API key solo para builds/SSR, nunca en el navegador. |
-| Markdown con XSS en la web consumidora | Sanitizar en la vista previa y documentar que el consumidor debe sanitizar. |
+| HTML con XSS en la web consumidora | El servidor genera el HTML con una lista blanca y escapa texto/atributos; el cliente nunca envía HTML. |
 | Editor pesado / bundle grande | Carga diferida del editor; medir bundle en CI. |
-| Bloqueo por dependencia del editor | Persistir markdown puro; el editor es reemplazable. |
+| Bloqueo por dependencia del editor | Persistir JSON estándar de ProseMirror/Tiptap y regenerar el HTML desde el servidor; el editor es reemplazable. |
 | Copiar/pegar imágenes no funciona igual en todos los navegadores | Implementar `paste`/`drop` a nivel de contenedor con `clipboardData.items`; fallback a selector de archivo; probar Chrome/Firefox/Safari. |
 | Imágenes huérfanas en R2 | Borrado en el servicio + auditoría periódica; metadata en D1. |
 | Subida de archivos maliciosos | MIME allowlist, límite de tamaño, `nosniff`, evitar SVG sin sanitizar. |
@@ -1002,7 +1012,7 @@ Pero en este proyecto también añadiría:
 |---|---|
 | Autenticación | Login propio multiusuario. |
 | Host | Un único host gratuito `*.workers.dev`. |
-| Imágenes | R2 desde el MVP, con pegar/arrastrar y subida inmediata. |
+| Imágenes | R2 desde el MVP, con pegar/arrastrar y subida diferida al guardar. |
 | Consumo público | Desde el navegador; CORS por blog (`site_url` + `allowed_origins`). |
 | Borrado de blogs | Bloqueado si tiene artículos (`409 BLOG_HAS_ARTICLES`). |
 | Usuarios | Multiusuario desde el esquema; un administrador inicial. |

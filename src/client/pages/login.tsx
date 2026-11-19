@@ -21,7 +21,7 @@ import { Input } from "../components/ui/input"
 
 const highlights = [
   "Blogs separados, con sus propios artículos.",
-  "Contenido en markdown y estados editoriales.",
+  "Contenido rich text, fuentes y estados editoriales.",
   "API pública con CORS para tus páginas web.",
 ]
 
@@ -62,7 +62,7 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-canvas">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(109,140,255,0.14),transparent_35%),radial-gradient(circle_at_85%_90%,rgba(167,139,250,0.08),transparent_40%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(124,154,255,0.16),transparent_35%),radial-gradient(circle_at_85%_90%,rgba(182,156,255,0.10),transparent_40%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
 
       <div className="relative mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-6 py-10 lg:grid-cols-[1.1fr_0.9fr] lg:px-10">

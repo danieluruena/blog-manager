@@ -8,6 +8,7 @@ import {
   EyeOff,
   FileText,
   Filter,
+  ImagePlus,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -67,6 +68,47 @@ const statusLabels: Record<ArticleStatus, string> = {
   published: "Publicado",
   hidden: "Oculto",
   featured: "Destacado",
+}
+
+function ArticleActions({
+  article,
+  pending,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  article: ArticleSummaryDto
+  pending: boolean
+  onEdit: () => void
+  onToggle: () => void
+  onDelete: () => void
+}) {
+  const visible = isVisibleStatus(article.status)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label={`Acciones de ${article.title}`}>
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem onSelect={onEdit}>
+          <Pencil className="size-4" />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={pending} onSelect={onToggle}>
+          {visible ? <EyeOff className="size-4" /> : <Send className="size-4" />}
+          {visible ? "Despublicar" : "Publicar"}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="text-danger focus:text-danger" onSelect={onDelete}>
+          <Trash2 className="size-4" />
+          Eliminar
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export function BlogArticlesPage() {
@@ -316,99 +358,141 @@ export function BlogArticlesPage() {
         />
       ) : articles.data && articles.data.data.length > 0 ? (
         <div className="space-y-4">
-          <Card className="overflow-hidden border-line bg-surface py-0">
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-line hover:bg-transparent">
-                    <TableHead className="pl-5">Artículo</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="hidden md:table-cell">Autor</TableHead>
-                    <TableHead className="hidden lg:table-cell">Publicado</TableHead>
-                    <TableHead className="hidden xl:table-cell">Actualizado</TableHead>
-                    <TableHead className="pr-5 text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {articles.data.data.map((article) => {
-                    const visible = isVisibleStatus(article.status)
-                    const pending =
-                      toggleStatus.isPending && toggleStatus.variables?.article.id === article.id
+          <div className="space-y-3 md:hidden">
+            {articles.data.data.map((article) => {
+              const pending =
+                toggleStatus.isPending && toggleStatus.variables?.article.id === article.id
 
-                    return (
-                      <TableRow key={article.id} className="border-line">
-                        <TableCell className="max-w-md pl-5">
-                          <Link
-                            to={`/blogs/${currentBlog.id}/articles/${article.id}`}
-                            className="block truncate font-medium text-ink transition-colors hover:text-brand"
-                          >
-                            {article.title}
-                          </Link>
-                          <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
-                            /{article.slug}
-                          </p>
-                        </TableCell>
-                        <TableCell>
+              return (
+                <Card key={article.id} className="border-line bg-surface py-0">
+                  <CardContent className="flex items-start gap-2 p-4">
+                    <Link
+                      to={`/blogs/${currentBlog.id}/articles/${article.id}`}
+                      className="flex min-w-0 flex-1 gap-3"
+                    >
+                      <div className="relative aspect-video w-16 shrink-0 overflow-hidden rounded-md border border-line bg-surface-2">
+                        {article.coverImage ? (
+                          <img
+                            src={article.coverImage}
+                            alt=""
+                            loading="lazy"
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex size-full items-center justify-center text-muted-foreground">
+                            <ImagePlus className="size-4" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-sm font-medium leading-snug text-ink">
+                          {article.title}
+                        </p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                          {article.excerpt || `/${article.slug}`}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
                           <StatusBadge status={article.status} />
-                        </TableCell>
-                        <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                          {article.author}
-                        </TableCell>
-                        <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground lg:table-cell">
-                          {formatDate(article.publishedAt)}
-                        </TableCell>
-                        <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground xl:table-cell">
-                          {formatDateTime(article.updatedAt)}
-                        </TableCell>
-                        <TableCell className="pr-5 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label={`Acciones de ${article.title}`}
-                              >
-                                <MoreHorizontal className="size-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-52">
-                              <DropdownMenuItem
-                                onSelect={() =>
-                                  navigate(`/blogs/${currentBlog.id}/articles/${article.id}`)
-                                }
-                              >
-                                <Pencil className="size-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={pending}
-                                onSelect={() => toggleArticleStatus(article)}
-                              >
-                                {visible ? (
-                                  <EyeOff className="size-4" />
+                          <span className="text-[11px] text-muted-foreground">
+                            {formatDate(article.publishedAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                    <ArticleActions
+                      article={article}
+                      pending={pending}
+                      onEdit={() => navigate(`/blogs/${currentBlog.id}/articles/${article.id}`)}
+                      onToggle={() => toggleArticleStatus(article)}
+                      onDelete={() => setDeletingArticle(article)}
+                    />
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          <div className="hidden md:block">
+            <Card className="overflow-hidden border-line bg-surface py-0">
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-line hover:bg-transparent">
+                      <TableHead className="pl-5">Artículo</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="hidden md:table-cell">Autor</TableHead>
+                      <TableHead className="hidden lg:table-cell">Publicado</TableHead>
+                      <TableHead className="hidden xl:table-cell">Actualizado</TableHead>
+                      <TableHead className="pr-5 text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {articles.data.data.map((article) => {
+                      const pending =
+                        toggleStatus.isPending && toggleStatus.variables?.article.id === article.id
+
+                      return (
+                        <TableRow key={article.id} className="border-line">
+                          <TableCell className="max-w-md pl-5">
+                            <div className="flex items-center gap-3">
+                              <div className="relative aspect-video w-16 shrink-0 overflow-hidden rounded-md border border-line bg-surface-2">
+                                {article.coverImage ? (
+                                  <img
+                                    src={article.coverImage}
+                                    alt=""
+                                    loading="lazy"
+                                    className="size-full object-cover"
+                                  />
                                 ) : (
-                                  <Send className="size-4" />
+                                  <div className="flex size-full items-center justify-center text-muted-foreground">
+                                    <ImagePlus className="size-4" />
+                                  </div>
                                 )}
-                                {visible ? "Despublicar" : "Publicar"}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-danger focus:text-danger"
-                                onSelect={() => setDeletingArticle(article)}
-                              >
-                                <Trash2 className="size-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                              </div>
+                              <div className="min-w-0">
+                                <Link
+                                  to={`/blogs/${currentBlog.id}/articles/${article.id}`}
+                                  className="block truncate font-medium text-ink transition-colors hover:text-brand"
+                                >
+                                  {article.title}
+                                </Link>
+                                <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                                  /{article.slug}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={article.status} />
+                          </TableCell>
+                          <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                            {article.author}
+                          </TableCell>
+                          <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground lg:table-cell">
+                            {formatDate(article.publishedAt)}
+                          </TableCell>
+                          <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground xl:table-cell">
+                            {formatDateTime(article.updatedAt)}
+                          </TableCell>
+                          <TableCell className="pr-5 text-right">
+                            <ArticleActions
+                              article={article}
+                              pending={pending}
+                              onEdit={() =>
+                                navigate(`/blogs/${currentBlog.id}/articles/${article.id}`)
+                              }
+                              onToggle={() => toggleArticleStatus(article)}
+                              onDelete={() => setDeletingArticle(article)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
