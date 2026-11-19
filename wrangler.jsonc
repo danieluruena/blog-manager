@@ -6,6 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "upload_source_maps": true,
   "workers_dev": true,
+  "preview_urls": false,
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
@@ -15,7 +16,7 @@
     {
       "binding": "DB",
       "database_name": "blog-manager-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "e358eb8c-9c68-4786-a958-0e6eb49143e5",
       "migrations_dir": "migrations",
     },
   ],

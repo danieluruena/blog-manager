@@ -9,28 +9,57 @@ Guía para desplegar, hacer copias de seguridad, migrar y resolver incidentes.
 | Local      | `http://localhost:5173`                        | D1 y R2 emulados por Wrangler  |
 | Producción | `https://<worker>.<subdominio>.workers.dev`    | D1 y R2 reales                 |
 
-El despliegue en producción está pendiente de `npx wrangler login`; los recursos
-remotos no se crean en local.
+El despliegue en producción ya está creado en `https://blog-manager.dennis14756.workers.dev`.
+Los recursos remotos (D1, R2 y `AUTH_PEPPER`) están configurados. Los deploys
+posteriores se hacen solos al mergear a `main`.
 
 ## Despliegue
+
+### Infraestructura inicial (ya realizada)
 
 1. Autenticarse: `npx wrangler login`.
 2. Crear recursos: `npm run bootstrap` (D1, R2 y `database_id` en `wrangler.jsonc`).
 3. Configurar el secreto: `npx wrangler secret put AUTH_PEPPER` (mínimo 32 caracteres).
 4. Aplicar migraciones: `npm run db:migrate:remote`.
-5. Crear el administrador inicial:
+5. Crear el administrador inicial con `npm run user:create -- --remote ...`.
 
-   ```powershell
-   $env:AUTH_PEPPER = "<el mismo del worker>"
-   $env:ADMIN_PASSWORD = "<contraseña temporal>"
-   npm run user:create -- --remote --email tu@email.com --name "Tu Nombre"
-   Remove-Item Env:AUTH_PEPPER, Env:ADMIN_PASSWORD
-   ```
+### Despliegue automático
 
-6. Desplegar: `npm run deploy`.
-7. Smoke test: login, crear blog, crear artículo, subir imagen, publicar,
-   consultar la API pública desde un origen permitido y comprobar el bloqueo de
-   borrado con artículos.
+El workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) se
+ejecuta al hacer merge a `main` (o manualmente con `workflow_dispatch`):
+
+1. `npm ci`
+2. `npm run test`
+3. `npm run build`
+4. `npx wrangler d1 migrations apply blog-manager-db --remote`
+5. `npx wrangler deploy`
+
+Configura en GitHub, en el entorno `production`:
+
+- `CLOUDFLARE_API_TOKEN`: token con permisos de cuenta `Workers Scripts:Edit` y
+  `D1:Edit` (y `Workers R2 Storage:Edit` si quieres gestionar R2 desde CI).
+- `CLOUDFLARE_ACCOUNT_ID`: el ID de la cuenta de Cloudflare.
+
+Recomendación: protege el entorno `production` con revisores obligatorios.
+
+### Migraciones manuales
+
+Para aplicar migraciones sin desplegar, lanza a mano
+[`.github/workflows/migrate.yml`](../.github/workflows/migrate.yml) escribiendo
+`migrate` en la confirmación. El deploy también las aplica automáticamente;
+haz una copia de D1 antes de mergear cambios de esquema.
+
+### Despliegue manual de emergencia
+
+```powershell
+npm run deploy
+```
+
+### Smoke test
+
+Login, crear blog, crear artículo, subir imagen, publicar, consultar la API
+pública desde un origen permitido y comprobar el bloqueo de borrado con
+artículos.
 
 ## CI
 
@@ -40,6 +69,12 @@ GitHub Actions ejecuta en cada PR:
 2. `npm run lint`
 3. `npm run test`
 4. `npm run build`
+
+Y al mergear a `main`:
+
+1. Tests y build.
+2. Migraciones D1 remotas.
+3. `wrangler deploy`.
 
 Los tests no necesitan `.dev.vars`: el `AUTH_PEPPER` de prueba se define en
 `vitest.config.ts`.

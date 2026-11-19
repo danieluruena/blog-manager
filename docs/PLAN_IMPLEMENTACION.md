@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. El despliegue es la siguiente fase.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. Fase 8 en curso: recursos remotos, secreto, migraciones, despliegue y pipeline listos; faltan el administrador inicial y el smoke test final.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -465,12 +465,12 @@ Poner la aplicación en producción y dejar el proyecto mantenible.
 
 ### Tareas
 
-- [ ] Ejecutar `npm run bootstrap` y copiar el `database_id`.
-- [ ] Aplicar migraciones en remoto.
+- [x] Ejecutar `npm run bootstrap` y copiar el `database_id`.
+- [x] Aplicar migraciones en remoto.
 - [ ] Crear el administrador inicial en remoto.
-- [ ] Verificar el subdominio `*.workers.dev` y el nombre del Worker.
-- [ ] Configurar CI/CD (Workers Builds o GitHub Actions).
-- [ ] Configurar workflow manual de migraciones.
+- [x] Verificar el subdominio `*.workers.dev` y el nombre del Worker.
+- [x] Configurar CI/CD (Workers Builds o GitHub Actions).
+- [x] Configurar workflow manual de migraciones.
 - [ ] Smoke test en producción:
   - [ ] Login.
   - [ ] Crear blog.
@@ -479,9 +479,9 @@ Poner la aplicación en producción y dejar el proyecto mantenible.
   - [ ] Consultar API pública desde un origen permitido.
   - [ ] Verificar que el blog A no devuelve artículos del B.
   - [ ] Verificar que no se puede borrar un blog con artículos.
-- [ ] Escribir `README.md`: requisitos, instalación, scripts, variables, deploy.
-- [ ] Escribir `docs/API.md` definitivo.
-- [ ] Documentar operación: backups, restauración, reseteo de contraseña del admin, migraciones.
+- [x] Escribir `README.md`: requisitos, instalación, scripts, variables, deploy.
+- [x] Escribir `docs/API.md` definitivo.
+- [x] Documentar operación: backups, restauración, reseteo de contraseña del admin, migraciones.
 - [ ] Etiquetar la versión `v0.1.0`.
 
 ### Criterios de aceptación
