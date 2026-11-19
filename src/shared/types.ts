@@ -82,6 +82,7 @@ export type ArticleSummaryDto = {
 
 export type ArticleDto = ArticleSummaryDto & {
   body: string
+  bodyJson: string | null
 }
 
 export type PublicArticleSummaryDto = Omit<ArticleSummaryDto, "blogId">

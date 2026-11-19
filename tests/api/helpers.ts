@@ -86,12 +86,32 @@ export async function createTestArticle(
     slug: `articulo-${id.slice(0, 8)}`,
     excerpt: "Resumen de prueba",
     author: "Autor de prueba",
-    body: "# Cuerpo del artículo",
+    body: "<p>Cuerpo del artículo</p>",
+    bodyJson: richTextJson("Cuerpo del artículo"),
     status: "draft",
     publishedAt: null,
     createdAt: NOW,
     updatedAt: NOW,
     ...overrides,
+  })
+}
+
+export function richTextJson(text = ""): string {
+  return JSON.stringify({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: text ? [{ type: "text", text }] : [],
+      },
+    ],
+  })
+}
+
+export function richTextImageJson(src: string, alt = "Imagen"): string {
+  return JSON.stringify({
+    type: "doc",
+    content: [{ type: "image", attrs: { src, alt } }],
   })
 }
 

@@ -12,6 +12,7 @@ import {
 import { deleteMediaByIds } from "../db/repositories/mediaRepository"
 import { normalizeIso, nowIso } from "../lib/dates"
 import { ApiError } from "../lib/errors"
+import { renderArticleHtml } from "../lib/richtext"
 import { findAvailableSlug, toSlug } from "../lib/slug"
 import { getBlogOrThrow } from "./blogService"
 import {
@@ -70,7 +71,8 @@ export async function createArticleForBlog(
     ? baseSlug
     : await findAvailableSlug(baseSlug, (candidate) => articleSlugExists(db, blogId, candidate))
   const timestamp = nowIso()
-  const referencedMedia = await resolveReferencedMedia(db, blogId, null, input.body)
+  const bodyHtml = renderArticleHtml(input.bodyJson)
+  const referencedMedia = await resolveReferencedMedia(db, blogId, null, bodyHtml)
 
   const article = await createArticle(db, {
     id: crypto.randomUUID(),
@@ -79,7 +81,8 @@ export async function createArticleForBlog(
     slug,
     excerpt: input.excerpt,
     author: input.author,
-    body: input.body,
+    body: bodyHtml,
+    bodyJson: input.bodyJson,
     status: input.status,
     publishedAt: resolvePublishedAt(input.status, input.publishedAt, null),
     createdAt: timestamp,
@@ -114,19 +117,18 @@ export async function updateArticleForBlog(
   }
 
   const status = input.status ?? article.status
+  const bodyHtml = input.bodyJson !== undefined ? renderArticleHtml(input.bodyJson) : null
   const previousMedia =
-    input.body !== undefined ? await findReferencedMedia(db, blogId, article.body) : ([] as Media[])
+    bodyHtml !== null ? await findReferencedMedia(db, blogId, article.body) : ([] as Media[])
   const referencedMedia =
-    input.body !== undefined
-      ? await resolveReferencedMedia(db, blogId, article.id, input.body)
-      : null
+    bodyHtml !== null ? await resolveReferencedMedia(db, blogId, article.id, bodyHtml) : null
 
   const updated = await updateArticle(db, blogId, articleId, {
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.slug !== undefined ? { slug: input.slug } : {}),
     ...(input.excerpt !== undefined ? { excerpt: input.excerpt } : {}),
     ...(input.author !== undefined ? { author: input.author } : {}),
-    ...(input.body !== undefined ? { body: input.body } : {}),
+    ...(bodyHtml !== null ? { body: bodyHtml, bodyJson: input.bodyJson } : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
     ...(input.publishedAt !== undefined || isVisibleStatus(status)
       ? { publishedAt: resolvePublishedAt(status, input.publishedAt, article.publishedAt) }

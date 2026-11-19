@@ -1,20 +1,10 @@
 import type { Context } from "hono"
-import type { ContentfulStatusCode } from "hono/utils/http-status"
 import { ZodError } from "zod"
 
 import type { AppEnv } from "../types"
+import { ApiError } from "./apiError"
 
-export class ApiError extends Error {
-  constructor(
-    public status: ContentfulStatusCode,
-    public code: string,
-    message: string,
-    public details?: unknown,
-  ) {
-    super(message)
-    this.name = "ApiError"
-  }
-}
+export { ApiError }
 
 export function formatZodIssues(error: ZodError) {
   return error.issues.map((issue) => ({

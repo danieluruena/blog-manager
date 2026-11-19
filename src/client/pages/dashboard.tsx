@@ -180,7 +180,7 @@ export function DashboardPage() {
               </p>
               <p className="mt-2 text-sm font-medium text-ink">Editor de artículos</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Markdown, estados editoriales, fechas y publicación.
+                Rich text, fuentes, estados editoriales, fechas y publicación.
               </p>
             </div>
             <div className="rounded-xl border border-line bg-surface-2/60 p-4">

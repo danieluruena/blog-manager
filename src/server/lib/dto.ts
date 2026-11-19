@@ -71,6 +71,7 @@ export function toArticleDto(article: Article): ArticleDto {
   return {
     ...toArticleSummaryDto(article),
     body: article.body,
+    bodyJson: article.bodyJson,
   }
 }
 

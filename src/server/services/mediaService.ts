@@ -93,8 +93,8 @@ export async function deleteMediaObjects(bucket: R2Bucket, keys: string[]): Prom
 }
 
 /**
- * Devuelve las filas de `media` referenciadas en el markdown, sin validar
- * a qué artículo pertenecen.
+ * Devuelve las filas de `media` referenciadas en el HTML del artículo, sin
+ * validar a qué artículo pertenecen.
  */
 export async function findReferencedMedia(
   db: Database,
@@ -137,7 +137,7 @@ export async function resolveReferencedMedia(
 
 /**
  * Asigna al artículo las imágenes indicadas y elimina de R2 y D1 las que
- * ya no aparecen en el markdown (`keep`).
+ * ya no aparecen en el HTML (`keep`).
  */
 export async function syncArticleMedia(
   bucket: R2Bucket,

@@ -21,7 +21,7 @@ import { Input } from "../components/ui/input"
 
 const highlights = [
   "Blogs separados, con sus propios artículos.",
-  "Contenido en markdown y estados editoriales.",
+  "Contenido rich text, fuentes y estados editoriales.",
   "API pública con CORS para tus páginas web.",
 ]
 

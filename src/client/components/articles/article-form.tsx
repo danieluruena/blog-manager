@@ -20,7 +20,6 @@ import { nowDateTimeLocal } from "../../lib/datetime"
 import { formatDateTime, formatImageSize } from "../../lib/format"
 import { optimizeImage } from "../../lib/image-optimization"
 import { extractBlobImageUrls, replaceBlobImageUrls } from "../../lib/pending-images"
-import { countWords } from "../../lib/text"
 import { PageHeader } from "../layout/page-header"
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
 import { Button } from "../ui/button"
@@ -46,7 +45,7 @@ import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Textarea } from "../ui/textarea"
 import { DeleteArticleDialog } from "./delete-article-dialog"
-import { MarkdownEditor } from "./markdown-editor"
+import { RichTextEditor } from "./rich-text-editor"
 
 const statusLabels: Record<ArticleStatus, string> = {
   draft: "Borrador",
@@ -92,7 +91,6 @@ export function ArticleForm({
   })
 
   const status = useWatch({ control: form.control, name: "status" })
-  const body = useWatch({ control: form.control, name: "body" })
   const excerpt = useWatch({ control: form.control, name: "excerpt" })
   const isDirty = form.formState.isDirty
 
@@ -198,9 +196,9 @@ export function ArticleForm({
 
   async function save(values: ArticleFormValues, nextStatus: ArticleStatus) {
     try {
-      const body = await resolvePendingImages(values.body)
+      const bodyJson = await resolvePendingImages(values.bodyJson)
 
-      mutation.mutate({ values: { ...values, body }, status: nextStatus })
+      mutation.mutate({ values: { ...values, bodyJson }, status: nextStatus })
     } catch {
       // resolvePendingImages ya muestra el error.
     }
@@ -240,11 +238,11 @@ export function ArticleForm({
     }
   }
 
-  async function resolvePendingImages(markdown: string): Promise<string> {
-    const blobUrls = extractBlobImageUrls(markdown)
+  async function resolvePendingImages(bodyJson: string): Promise<string> {
+    const blobUrls = extractBlobImageUrls(bodyJson)
 
     if (blobUrls.length === 0) {
-      return markdown
+      return bodyJson
     }
 
     setIsUploading(true)
@@ -279,7 +277,7 @@ export function ArticleForm({
         id: toastId,
       })
 
-      return replaceBlobImageUrls(markdown, replacements)
+      return replaceBlobImageUrls(bodyJson, replacements)
     } catch (uploadError) {
       toast.error(
         uploadError instanceof Error ? uploadError.message : "No se pudieron subir las imágenes",
@@ -292,7 +290,6 @@ export function ArticleForm({
   }
 
   const error = mutation.error instanceof ApiError ? mutation.error : null
-  const words = countWords(body)
   const visible = isVisibleStatus(status)
   const isBusy = mutation.isPending || isUploading
 
@@ -384,23 +381,15 @@ export function ArticleForm({
               <CardContent className="px-5">
                 <FormField
                   control={form.control}
-                  name="body"
+                  name="bodyJson"
                   render={({ field }) => (
                     <FormItem>
-                      <MarkdownEditor
-                        id="article-body"
-                        value={field.value}
+                      <RichTextEditor
+                        initialJson={article?.bodyJson ?? null}
+                        initialHtml={article?.body ?? ""}
                         onChange={field.onChange}
                         onUploadImage={stageImage}
                       />
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span>
-                          {words} {words === 1 ? "palabra" : "palabras"} · {body.length} caracteres
-                        </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wider">
-                          Ctrl/Cmd + S para guardar
-                        </span>
-                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

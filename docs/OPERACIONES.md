@@ -87,6 +87,25 @@ Los tests no necesitan `.dev.vars`: el `AUTH_PEPPER` de prueba se define en
 - Para revertir, restaura la copia de seguridad y despliega la versión anterior
   del Worker.
 
+### Migración 0002 — `body_json`
+
+`0002_article_body_json.sql` añade `articles.body_json`. La columna admite `NULL`
+para no romper artículos antiguos; el editor y la API usan `body_json` como
+fuente de verdad cuando existe.
+
+Producción no tenía artículos cuando se introduce el cambio, así que el pipeline
+solo aplica la migración. En local, después de migrar y cargar el seed:
+
+```powershell
+npm run db:migrate:local
+npm run db:seed        # carga el seed y ejecuta articles:convert
+npm run articles:convert
+```
+
+`articles:convert` recorre los artículos con `body_json` vacío o `NULL`, convierte
+el markdown antiguo con `marked` + `generateJSON` de Tiptap y regenera el HTML con
+el renderizador del servidor. Es idempotente: los ya convertidos se omiten.
+
 ## Copias de seguridad
 
 ### D1
@@ -125,7 +144,7 @@ También puedes descargar objetos concretos con `npx wrangler r2 object get`.
 El dump desactiva/defiere claves foráneas y crea las tablas en un orden que no
 respeta dependencias, así que al restaurar con SQLite directamente hay que abrir
 la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
-(`node:sqlite`): 2 usuarios, 3 blogs, 8 artículos, 2 medios y 2 migraciones.
+(`node:sqlite`): 2 usuarios, 3 blogs, 8 artículos, 2 medios y 3 migraciones.
 
 ## Recuperación de acceso
 
@@ -177,7 +196,8 @@ la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
 
 ### Limitaciones conocidas
 
-- Las fuentes se cargan desde Google Fonts; la CSP lo permite explícitamente.
+- Las fuentes se cargan desde Google Fonts; la CSP lo permite explícitamente. El
+  editor ofrece Inter, Roboto, Montserrat, Lora, Merriweather y Playfair Display.
 - La CSP usa `style-src 'unsafe-inline'` porque Radix y otros componentes usan
   atributos `style`. Los scripts no admiten `unsafe-inline` en producción.
 - No hay CLI de reseteo de contraseña (ver procedimiento arriba).

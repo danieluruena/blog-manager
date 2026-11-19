@@ -22,14 +22,16 @@ const articleBaseSchema = z.object({
     .trim()
     .min(1, "El autor es obligatorio")
     .max(120, "El autor no puede superar los 120 caracteres"),
-  body: z.string().max(200_000, "El contenido es demasiado largo"),
+  bodyJson: z
+    .string()
+    .min(1, "El contenido es obligatorio")
+    .max(1_000_000, "El contenido es demasiado largo"),
   status: z.enum(articleStatusValues, { message: "Estado inválido" }),
   publishedAt: isoDateSchema.nullable().optional(),
 })
 
 export const articleCreateSchema = articleBaseSchema.extend({
   excerpt: articleBaseSchema.shape.excerpt.default(""),
-  body: articleBaseSchema.shape.body.default(""),
   status: articleBaseSchema.shape.status.default("draft"),
 })
 

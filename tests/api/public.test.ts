@@ -146,7 +146,7 @@ describe("public API", () => {
       data: { body: string; blog: { slug: string } }
     }
 
-    expect(body.data.body).toContain("Cuerpo del artículo")
+    expect(body.data.body).toContain("<p>Cuerpo del artículo</p>")
     expect(body.data.blog.slug).toBe("pagina-a")
 
     for (const slug of ["borrador", "oculto", "otro-articulo"]) {

@@ -8,6 +8,8 @@ import {
   createTestUser,
   jsonRequest,
   loginAs,
+  richTextImageJson,
+  richTextJson,
 } from "./helpers"
 
 const WEBP_BASE64 = "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA=="
@@ -76,7 +78,7 @@ async function uploadImage(blogId: string, cookie: string): Promise<UploadedImag
 async function createArticle(
   blogId: string,
   cookie: string,
-  body: string,
+  bodyJson: string,
 ): Promise<{ status: number; data: { id: string } }> {
   const response = await apiFetch(
     jsonRequest(`/api/admin/blogs/${blogId}/articles`, {
@@ -85,7 +87,7 @@ async function createArticle(
       body: {
         title: "Artículo con imagen",
         author: "Admin",
-        body,
+        bodyJson,
         status: "draft",
       },
     }),
@@ -101,12 +103,12 @@ function updateArticleRequest(
   blogId: string,
   articleId: string,
   cookie: string,
-  body: string,
+  bodyJson: string,
 ): Request {
   return jsonRequest(`/api/admin/blogs/${blogId}/articles/${articleId}`, {
     method: "PATCH",
     cookie,
-    body: { body },
+    body: { bodyJson },
   })
 }
 
@@ -119,14 +121,14 @@ describe("article media lifecycle", () => {
   it("elimina de R2 y D1 las imágenes que se quitan al guardar", async () => {
     const { blog, cookie } = await setup()
     const image = await uploadImage(blog.id, cookie)
-    const created = await createArticle(blog.id, cookie, `![Imagen](${image.url})`)
+    const created = await createArticle(blog.id, cookie, richTextImageJson(image.url))
 
     expect(created.status).toBe(201)
     expect((await apiFetch(new Request(image.url))).status).toBe(200)
     expect(await mediaCount(blog.id)).toBe(1)
 
     const updated = await apiFetch(
-      updateArticleRequest(blog.id, created.data.id, cookie, "Sin imágenes"),
+      updateArticleRequest(blog.id, created.data.id, cookie, richTextJson("Sin imágenes")),
     )
 
     expect(updated.status).toBe(200)
@@ -142,15 +144,15 @@ describe("article media lifecycle", () => {
     expect(first.url).not.toBe(second.url)
     expect(first.filename).not.toBe(second.filename)
 
-    const firstArticle = await createArticle(blog.id, cookie, `![A](${first.url})`)
-    const secondArticle = await createArticle(blog.id, cookie, `![B](${second.url})`)
+    const firstArticle = await createArticle(blog.id, cookie, richTextImageJson(first.url, "A"))
+    const secondArticle = await createArticle(blog.id, cookie, richTextImageJson(second.url, "B"))
 
     expect(firstArticle.status).toBe(201)
     expect(secondArticle.status).toBe(201)
     expect(await mediaCount(blog.id)).toBe(2)
 
     const updated = await apiFetch(
-      updateArticleRequest(blog.id, firstArticle.data.id, cookie, "Sin imágenes"),
+      updateArticleRequest(blog.id, firstArticle.data.id, cookie, richTextJson("Sin imágenes")),
     )
 
     expect(updated.status).toBe(200)
@@ -163,10 +165,10 @@ describe("article media lifecycle", () => {
     const { blog, cookie } = await setup()
     const image = await uploadImage(blog.id, cookie)
 
-    const first = await createArticle(blog.id, cookie, `![A](${image.url})`)
+    const first = await createArticle(blog.id, cookie, richTextImageJson(image.url, "A"))
     expect(first.status).toBe(201)
 
-    const second = await createArticle(blog.id, cookie, `![B](${image.url})`)
+    const second = await createArticle(blog.id, cookie, richTextImageJson(image.url, "B"))
 
     expect(second.status).toBe(409)
 
@@ -180,7 +182,7 @@ describe("article media lifecycle", () => {
   it("borra las imágenes al eliminar el artículo", async () => {
     const { blog, cookie } = await setup()
     const image = await uploadImage(blog.id, cookie)
-    const created = await createArticle(blog.id, cookie, `![Imagen](${image.url})`)
+    const created = await createArticle(blog.id, cookie, richTextImageJson(image.url))
 
     const deleted = await apiFetch(
       jsonRequest(`/api/admin/blogs/${blog.id}/articles/${created.data.id}`, {

@@ -6,6 +6,7 @@ import {
   toFormValues,
   toInput,
 } from "../../src/client/lib/article-form"
+import { EMPTY_RICH_TEXT_JSON } from "../../src/shared/richtext"
 import type { ArticleDto } from "../../src/shared/types"
 
 const article: ArticleDto = {
@@ -16,7 +17,17 @@ const article: ArticleDto = {
   excerpt: "Un resumen",
   author: "Daniel",
   status: "published",
-  body: "# Hola",
+  body: "<h1>Hola</h1>",
+  bodyJson: JSON.stringify({
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: "Hola" }],
+      },
+    ],
+  }),
   createdAt: "2026-11-18T09:00:00.000Z",
   publishedAt: "2026-11-18T10:00:00.000Z",
   updatedAt: "2026-11-18T11:00:00.000Z",
@@ -31,7 +42,7 @@ describe("article form", () => {
       author: "Admin",
       status: "draft",
       publishedAt: "",
-      body: "",
+      bodyJson: EMPTY_RICH_TEXT_JSON,
     })
 
     const values = toFormValues(article, "Admin")

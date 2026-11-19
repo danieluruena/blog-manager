@@ -8,6 +8,7 @@ import {
   createTestUser,
   jsonRequest,
   loginAs,
+  richTextJson,
 } from "./helpers"
 
 beforeEach(async () => {
@@ -182,7 +183,7 @@ describe("admin API", () => {
           title: "Artículo del editor",
           author: "Editor",
           excerpt: "Resumen",
-          body: "# Contenido",
+          bodyJson: richTextJson("Contenido"),
         },
       }),
     )
@@ -201,7 +202,7 @@ describe("admin API", () => {
           title: "Cómo empezar",
           author: "Daniel",
           excerpt: "Una introducción",
-          body: "# Hola",
+          bodyJson: richTextJson("Hola"),
         },
       }),
     )
@@ -256,8 +257,11 @@ describe("admin API", () => {
     )
     expect(detail.status).toBe(200)
 
-    const detailBody = (await detail.json()) as { data: { body: string } }
-    expect(detailBody.data.body).toBe("# Hola")
+    const detailBody = (await detail.json()) as {
+      data: { body: string; bodyJson: string | null }
+    }
+    expect(detailBody.data.body).toBe("<p>Hola</p>")
+    expect(detailBody.data.bodyJson).toContain("Hola")
 
     const deleteBlog = await apiFetch(
       jsonRequest(`/api/admin/blogs/${blog.id}`, {
