@@ -10,9 +10,11 @@ import {
   loginAs,
   richTextImageJson,
   richTextJson,
+  richTextVideoJson,
 } from "./helpers"
 
 const WEBP_BASE64 = "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA=="
+const WEBM_BYTES = [0x1a, 0x45, 0xdf, 0xa3]
 
 function webpBytes(): Uint8Array {
   return Uint8Array.from(atob(WEBP_BASE64), (character) => character.charCodeAt(0))
@@ -22,9 +24,24 @@ function imageFile(name = "pixel.webp"): File {
   return new File([webpBytes()], name, { type: "image/webp" })
 }
 
+function videoFile(name = "clip.webm"): File {
+  return new File([Uint8Array.from(WEBM_BYTES)], name, { type: "video/webm" })
+}
+
 function uploadRequest(blogId: string, cookie: string): Request {
   const form = new FormData()
   form.set("file", imageFile())
+
+  return new Request(`http://example.com/api/admin/blogs/${blogId}/media`, {
+    method: "POST",
+    headers: { cookie },
+    body: form,
+  })
+}
+
+function uploadVideoRequest(blogId: string, cookie: string, file = videoFile()): Request {
+  const form = new FormData()
+  form.set("file", file)
 
   return new Request(`http://example.com/api/admin/blogs/${blogId}/media`, {
     method: "POST",
@@ -67,6 +84,20 @@ type UploadedImage = { id: string; filename: string; url: string }
 
 async function uploadImage(blogId: string, cookie: string): Promise<UploadedImage> {
   const response = await apiFetch(uploadRequest(blogId, cookie))
+
+  expect(response.status).toBe(201)
+
+  const body = (await response.json()) as { data: UploadedImage }
+
+  return body.data
+}
+
+async function uploadVideo(
+  blogId: string,
+  cookie: string,
+  file = videoFile(),
+): Promise<UploadedImage> {
+  const response = await apiFetch(uploadVideoRequest(blogId, cookie, file))
 
   expect(response.status).toBe(201)
 
@@ -305,6 +336,102 @@ describe("article media lifecycle", () => {
 
     expect(deleted.status).toBe(204)
     expect((await apiFetch(new Request(image.url))).status).toBe(404)
+    expect(await mediaCount(blog.id)).toBe(0)
+  })
+
+  it("sube un vídeo WebM y responde a peticiones por rango", async () => {
+    const { blog, cookie } = await setup()
+    const video = await uploadVideo(blog.id, cookie)
+
+    expect(video.url.endsWith(".webm")).toBe(true)
+
+    const response = await apiFetch(new Request(video.url))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("video/webm")
+    expect(response.headers.get("accept-ranges")).toBe("bytes")
+
+    const range = await apiFetch(new Request(video.url, { headers: { range: "bytes=0-1" } }))
+    const rangeBody = new Uint8Array(await range.arrayBuffer())
+
+    expect(range.status).toBe(206)
+    expect(range.headers.get("accept-ranges")).toBe("bytes")
+    expect(range.headers.get("content-range")).toBe("bytes 0-1/4")
+    expect(range.headers.get("content-length")).toBe("2")
+    expect(rangeBody).toEqual(Uint8Array.from([0x1a, 0x45]))
+  })
+
+  it("rechaza vídeos que no sean WebM", async () => {
+    const { blog, cookie } = await setup()
+
+    const wrongType = await apiFetch(
+      uploadVideoRequest(
+        blog.id,
+        cookie,
+        new File([Uint8Array.from(WEBM_BYTES)], "clip.mp4", { type: "video/mp4" }),
+      ),
+    )
+    expect(wrongType.status).toBe(415)
+
+    const wrongMagic = await apiFetch(
+      uploadVideoRequest(
+        blog.id,
+        cookie,
+        new File([Uint8Array.from([0x00, 0x01, 0x02, 0x03])], "clip.webm", {
+          type: "video/webm",
+        }),
+      ),
+    )
+    expect(wrongMagic.status).toBe(415)
+  })
+
+  it("asocia el vídeo al artículo y lo elimina al quitarlo", async () => {
+    const { blog, cookie } = await setup()
+    const video = await uploadVideo(blog.id, cookie)
+    const created = await createArticle(blog.id, cookie, richTextVideoJson(video.url))
+
+    expect(created.status).toBe(201)
+    expect((await apiFetch(new Request(video.url))).status).toBe(200)
+    expect(await mediaCount(blog.id)).toBe(1)
+
+    const updated = await apiFetch(
+      updateArticleRequest(blog.id, created.data.id, cookie, {
+        bodyJson: richTextJson("Sin vídeo"),
+      }),
+    )
+
+    expect(updated.status).toBe(200)
+    expect((await apiFetch(new Request(video.url))).status).toBe(404)
+    expect(await mediaCount(blog.id)).toBe(0)
+  })
+
+  it("no permite reutilizar un vídeo de otro artículo", async () => {
+    const { blog, cookie } = await setup()
+    const video = await uploadVideo(blog.id, cookie)
+
+    const first = await createArticle(blog.id, cookie, richTextVideoJson(video.url))
+    expect(first.status).toBe(201)
+
+    const second = await createArticle(blog.id, cookie, richTextVideoJson(video.url))
+
+    expect(second.status).toBe(409)
+    expect((await apiFetch(new Request(video.url))).status).toBe(200)
+  })
+
+  it("borra el vídeo al eliminar el artículo", async () => {
+    const { blog, cookie } = await setup()
+    const video = await uploadVideo(blog.id, cookie)
+    const created = await createArticle(blog.id, cookie, richTextVideoJson(video.url))
+
+    const deleted = await apiFetch(
+      jsonRequest(`/api/admin/blogs/${blog.id}/articles/${created.data.id}`, {
+        method: "DELETE",
+        cookie,
+      }),
+    )
+
+    expect(deleted.status).toBe(204)
+    expect((await apiFetch(new Request(video.url))).status).toBe(404)
     expect(await mediaCount(blog.id)).toBe(0)
   })
 })

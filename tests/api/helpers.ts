@@ -115,6 +115,13 @@ export function richTextImageJson(src: string, alt = "Imagen"): string {
   })
 }
 
+export function richTextVideoJson(src: string, title = "Vídeo"): string {
+  return JSON.stringify({
+    type: "doc",
+    content: [{ type: "video", attrs: { src, title } }],
+  })
+}
+
 export function apiFetch(request: Request): Promise<Response> {
   return exports.default.fetch(request)
 }

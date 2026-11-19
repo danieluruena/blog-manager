@@ -1,4 +1,4 @@
-import { uploadImageMimeType } from "@shared/constants"
+import { uploadImageMimeType, uploadVideoMimeType } from "@shared/constants"
 
 import type { Database } from "../db/client"
 import {
@@ -13,45 +13,66 @@ import {
 import type { Media } from "../db/schema"
 import { nowIso } from "../lib/dates"
 import { ApiError } from "../lib/errors"
-import { detectImageMime, extractMediaFilenames, MAX_IMAGE_BYTES, mediaKey } from "../lib/media"
+import {
+  detectImageMime,
+  extractMediaFilenames,
+  isWebm,
+  MAX_IMAGE_BYTES,
+  MAX_VIDEO_BYTES,
+  mediaKey,
+} from "../lib/media"
 
 const allowedFormatsMessage =
-  "Solo se admiten imágenes WebP optimizadas. Vuelve a añadir la imagen desde el editor."
+  "Solo se admiten imágenes WebP y vídeos WebM optimizados. Vuelve a añadir el archivo desde el editor."
 
-export async function storeImage(
+export async function storeMedia(
   bucket: R2Bucket,
   db: Database,
   blogId: string,
   file: File,
 ): Promise<Media> {
   if (file.size === 0) {
-    throw new ApiError(400, "EMPTY_FILE", "La imagen está vacía")
+    throw new ApiError(400, "EMPTY_FILE", "El archivo está vacío")
   }
 
-  if (file.size > MAX_IMAGE_BYTES) {
-    throw new ApiError(413, "FILE_TOO_LARGE", "La imagen no puede superar los 5 MB")
-  }
+  const isImage = file.type === uploadImageMimeType
+  const isVideo = file.type === uploadVideoMimeType
 
-  if (file.type !== uploadImageMimeType) {
+  if (!isImage && !isVideo) {
     throw new ApiError(415, "UNSUPPORTED_MEDIA_TYPE", allowedFormatsMessage)
   }
 
-  const header = new Uint8Array(await file.slice(0, 32).arrayBuffer())
-  const detected = detectImageMime(header)
+  const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES
 
-  if (detected !== uploadImageMimeType) {
+  if (file.size > maxBytes) {
+    throw new ApiError(
+      413,
+      "FILE_TOO_LARGE",
+      isVideo ? "El vídeo no puede superar los 50 MB" : "La imagen no puede superar los 5 MB",
+    )
+  }
+
+  const header = new Uint8Array(await file.slice(0, 32).arrayBuffer())
+
+  if (isImage && detectImageMime(header) !== uploadImageMimeType) {
     throw new ApiError(415, "INVALID_IMAGE", "El archivo no es un WebP válido")
   }
 
-  const filename = `${crypto.randomUUID()}.webp`
+  if (isVideo && !isWebm(header)) {
+    throw new ApiError(415, "INVALID_VIDEO", "El archivo no es un WebM válido")
+  }
+
+  const extension = isVideo ? "webm" : "webp"
+  const filename = `${crypto.randomUUID()}.${extension}`
   const key = mediaKey(blogId, filename)
+  const mimeType = isVideo ? uploadVideoMimeType : uploadImageMimeType
 
   await bucket.put(key, file.stream(), {
     httpMetadata: {
-      contentType: uploadImageMimeType,
+      contentType: mimeType,
       cacheControl: "public, max-age=31536000, immutable",
     },
-    customMetadata: { blogId },
+    customMetadata: { blogId, kind: isVideo ? "video" : "image" },
   })
 
   try {
@@ -60,7 +81,7 @@ export async function storeImage(
       blogId,
       r2Key: key,
       filename,
-      mimeType: uploadImageMimeType,
+      mimeType,
       sizeBytes: file.size,
       createdAt: nowIso(),
     })
@@ -70,7 +91,7 @@ export async function storeImage(
   }
 }
 
-export async function deleteBlogImage(
+export async function deleteBlogMedia(
   bucket: R2Bucket,
   db: Database,
   blogId: string,
@@ -79,7 +100,7 @@ export async function deleteBlogImage(
   const item = await findMediaById(db, blogId, mediaId)
 
   if (!item) {
-    throw new ApiError(404, "NOT_FOUND", "Imagen no encontrada")
+    throw new ApiError(404, "NOT_FOUND", "Archivo no encontrado")
   }
 
   await bucket.delete(item.r2Key)

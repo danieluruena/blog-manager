@@ -19,7 +19,7 @@ import {
 import { nowDateTimeLocal } from "../../lib/datetime"
 import { formatDateTime, formatImageSize } from "../../lib/format"
 import { optimizeImage } from "../../lib/image-optimization"
-import { extractBlobImageUrls, replaceBlobImageUrls } from "../../lib/pending-images"
+import { extractBlobMediaUrls, replaceBlobMediaUrls } from "../../lib/pending-images"
 import { PageHeader } from "../layout/page-header"
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
 import { Button } from "../ui/button"
@@ -81,10 +81,11 @@ export function ArticleForm({
   const navigate = useNavigate()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isProcessingVideo, setIsProcessingVideo] = useState(false)
   const skipBlockRef = useRef<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const pendingImagesRef = useRef(new Map<string, File>())
-  const uploadedImagesRef = useRef(new Map<string, string>())
+  const pendingMediaRef = useRef(new Map<string, File>())
+  const uploadedMediaRef = useRef(new Map<string, string>())
   const backTo = `/blogs/${blog.id}/articles`
 
   const form = useForm<ArticleFormValues>({
@@ -173,16 +174,19 @@ export function ArticleForm({
   }, [])
 
   useEffect(() => {
-    const pendingImages = pendingImagesRef.current
-    const uploadedImages = uploadedImagesRef.current
+    const pendingMedia = pendingMediaRef.current
+    const uploadedMedia = uploadedMediaRef.current
 
     return () => {
-      for (const blobUrl of pendingImages.keys()) {
-        URL.revokeObjectURL(blobUrl)
-      }
+      const blobUrls = [...pendingMedia.keys()]
 
-      pendingImages.clear()
-      uploadedImages.clear()
+      pendingMedia.clear()
+      uploadedMedia.clear()
+
+      // Espera a que el editor se desmonte antes de revocar los blobs.
+      for (const blobUrl of blobUrls) {
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+      }
     }
   }, [])
 
@@ -199,17 +203,22 @@ export function ArticleForm({
   }
 
   async function save(values: ArticleFormValues, nextStatus: ArticleStatus) {
+    if (isProcessingVideo) {
+      toast.info("Espera a que termine la optimización del vídeo")
+      return
+    }
+
     try {
-      const bodyBlobUrls = extractBlobImageUrls(values.bodyJson)
+      const bodyBlobUrls = extractBlobMediaUrls(values.bodyJson)
       const coverBlobUrl = values.coverImage?.startsWith("blob:") ? values.coverImage : null
       const blobUrls = [...new Set([...bodyBlobUrls, ...(coverBlobUrl ? [coverBlobUrl] : [])])]
-      const replacements = await uploadPendingImages(blobUrls)
-      const bodyJson = replaceBlobImageUrls(values.bodyJson, replacements)
+      const replacements = await uploadPendingMedia(blobUrls)
+      const bodyJson = replaceBlobMediaUrls(values.bodyJson, replacements)
       const coverImage = coverBlobUrl ? (replacements.get(coverBlobUrl) ?? null) : values.coverImage
 
       mutation.mutate({ values: { ...values, bodyJson, coverImage }, status: nextStatus })
     } catch {
-      // uploadPendingImages ya muestra el error.
+      // uploadPendingMedia ya muestra el error.
     }
   }
 
@@ -228,7 +237,7 @@ export function ArticleForm({
       const optimized = await optimizeImage(file)
       const blobUrl = URL.createObjectURL(optimized.file)
 
-      pendingImagesRef.current.set(blobUrl, optimized.file)
+      pendingMediaRef.current.set(blobUrl, optimized.file)
 
       toast.success("Imagen optimizada a WebP", {
         id: toastId,
@@ -247,7 +256,50 @@ export function ArticleForm({
     }
   }
 
-  async function uploadPendingImages(blobUrls: string[]): Promise<Map<string, string>> {
+  async function stageVideo(file: File): Promise<string> {
+    setIsProcessingVideo(true)
+    const toastId = toast.loading("Preparando el optimizador de vídeo…", {
+      description: "Puede tardar unos minutos. No cierres esta pestaña.",
+    })
+    let lastPercent = -1
+
+    try {
+      const { optimizeVideo } = await import("../../lib/video-optimization")
+      const optimized = await optimizeVideo(file, (progress) => {
+        const percent = Math.round(progress * 100)
+
+        if (percent !== lastPercent) {
+          lastPercent = percent
+          toast.loading(`Optimizando vídeo… ${percent}%`, {
+            id: toastId,
+            description: "No cierres esta pestaña.",
+          })
+        }
+      })
+      const blobUrl = URL.createObjectURL(optimized.file)
+
+      pendingMediaRef.current.set(blobUrl, optimized.file)
+
+      toast.success("Vídeo optimizado a WebM", {
+        id: toastId,
+        description: `${formatImageSize(optimized.originalSize)} → ${formatImageSize(optimized.optimizedSize)}`,
+      })
+
+      return blobUrl
+    } catch (optimizationError) {
+      toast.error(
+        optimizationError instanceof Error
+          ? optimizationError.message
+          : "No se pudo optimizar el vídeo",
+        { id: toastId },
+      )
+      throw optimizationError
+    } finally {
+      setIsProcessingVideo(false)
+    }
+  }
+
+  async function uploadPendingMedia(blobUrls: string[]): Promise<Map<string, string>> {
     const replacements = new Map<string, string>()
 
     if (blobUrls.length === 0) {
@@ -255,39 +307,41 @@ export function ArticleForm({
     }
 
     setIsUploading(true)
-    const toastId = toast.loading(blobUrls.length === 1 ? "Subiendo imagen…" : "Subiendo imágenes…")
+    const toastId = toast.loading(
+      blobUrls.length === 1 ? "Subiendo archivo…" : "Subiendo archivos…",
+    )
 
     try {
       await Promise.all(
         blobUrls.map(async (blobUrl) => {
-          const alreadyUploaded = uploadedImagesRef.current.get(blobUrl)
+          const alreadyUploaded = uploadedMediaRef.current.get(blobUrl)
 
           if (alreadyUploaded) {
             replacements.set(blobUrl, alreadyUploaded)
             return
           }
 
-          const file = pendingImagesRef.current.get(blobUrl)
+          const file = pendingMediaRef.current.get(blobUrl)
 
           if (!file) {
-            throw new Error("No se encontró una de las imágenes pendientes")
+            throw new Error("No se encontró uno de los archivos pendientes")
           }
 
-          const response = await api.uploadImage(blog.id, file)
+          const response = await api.uploadMedia(blog.id, file)
 
-          uploadedImagesRef.current.set(blobUrl, response.data.url)
+          uploadedMediaRef.current.set(blobUrl, response.data.url)
           replacements.set(blobUrl, response.data.url)
         }),
       )
 
-      toast.success(blobUrls.length === 1 ? "Imagen subida" : "Imágenes subidas", {
+      toast.success(blobUrls.length === 1 ? "Archivo subido" : "Archivos subidos", {
         id: toastId,
       })
 
       return replacements
     } catch (uploadError) {
       toast.error(
-        uploadError instanceof Error ? uploadError.message : "No se pudieron subir las imágenes",
+        uploadError instanceof Error ? uploadError.message : "No se pudieron subir los archivos",
         { id: toastId },
       )
       throw uploadError
@@ -298,7 +352,7 @@ export function ArticleForm({
 
   const error = mutation.error instanceof ApiError ? mutation.error : null
   const visible = isVisibleStatus(status)
-  const isBusy = mutation.isPending || isUploading
+  const isBusy = mutation.isPending || isUploading || isProcessingVideo
 
   return (
     <Form {...form}>
@@ -449,6 +503,7 @@ export function ArticleForm({
                         initialHtml={article?.body ?? ""}
                         onChange={field.onChange}
                         onUploadImage={stageImage}
+                        onUploadVideo={stageVideo}
                       />
                       <FormMessage />
                     </FormItem>
@@ -611,7 +666,12 @@ export function ArticleForm({
             {isUploading ? (
               <span className="inline-flex items-center gap-2 text-brand">
                 <Loader2 className="size-3.5 animate-spin" />
-                Subiendo imágenes…
+                Subiendo archivos…
+              </span>
+            ) : isProcessingVideo ? (
+              <span className="inline-flex items-center gap-2 text-brand">
+                <Loader2 className="size-3.5 animate-spin" />
+                Optimizando vídeo…
               </span>
             ) : isDirty ? (
               <span className="inline-flex items-center gap-2 text-warning">

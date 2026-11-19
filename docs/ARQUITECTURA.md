@@ -13,7 +13,7 @@ Blog Manager será una aplicación desplegada como **un único Worker de Cloudfl
 1. La **SPA de administración** (React + Vite).
 2. La **API privada de administración** (`/api/admin/*`).
 3. Una **API pública de solo lectura**, versionada y aislada por blog (`/api/public/v1/*`).
-4. La **entrega de imágenes** subidas a R2 (`/media/*`).
+4. La **entrega de imágenes y vídeos** subidos a R2 (`/media/*`).
 
 La base de datos será **Cloudflare D1** (SQLite gestionado). Aunque DynamoDB es NoSQL, D1 es el servicio de Cloudflare que mejor encaja con este dominio: permite relaciones blog → artículos, índices, restricciones de unicidad, filtros por estado/fecha y transacciones. KV sería la opción “key-value” literal, pero no ofrece consultas ni integridad referencial y sería mucho más frágil para este caso.
 
@@ -22,7 +22,7 @@ flowchart LR
     A["Admin SPA<br/>React + Vite"] -->|"HTTPS same-origin<br/>/api/admin/*"| W["Cloudflare Worker<br/>Hono + TypeScript"]
     B["Sitios públicos<br/>página A, página B..."] -->|"HTTPS<br/>/api/public/v1/*"| W
     W -->|"Binding DB"| D[("Cloudflare D1<br/>blogs + articles")]
-    W -->|"Binding MEDIA"| R[("Cloudflare R2<br/>imágenes")]
+    W -->|"Binding MEDIA"| R[("Cloudflare R2<br/>imágenes y vídeos")]
     W -->|"Static Assets"| S["SPA build<br/>HTML/CSS/JS"]
     AUTH["Login propio<br/>cookie HttpOnly"] -.->|"protege /api/admin/*"| W
 ```
@@ -42,7 +42,7 @@ flowchart LR
 | Acceso a datos | **Drizzle ORM + SQL** | Esquema tipado, consultas seguras con parámetros y migraciones SQL generadas. |
 | Autenticación | **Login propio multiusuario** | Requisito confirmado. Sin dependencia de dominio propio ni Zero Trust. |
 | Usuarios | **Multiusuario desde el esquema; un administrador inicial** | Se evita una migración dolorosa al añadir usuarios. Roles `admin` y `editor`. |
-| Imágenes | **R2 + `/media/*` desde el MVP** | Copiar/pegar imágenes y subirlas directamente desde el editor. |
+| Imágenes y vídeos | **R2 + `/media/*` desde el MVP** | Copiar/pegar imágenes o vídeos y subirlos directamente desde el editor. |
 | Borrado de blogs | **Bloqueado si tiene artículos** | Evita pérdidas accidentales; la FK `RESTRICT` refuerza la regla. |
 | API pública | **Consumo desde navegador con CORS por blog** | Los sitios consultan desde el cliente; se permite el origen de `site_url` y orígenes extra. |
 | Despliegue | **Un Worker en `*.workers.dev` + GitHub Actions/Workers Builds** | Host gratuito de Cloudflare para el MVP; un solo artefacto. |
@@ -82,7 +82,7 @@ D1 tiene límites de 500 MB por base en el plan gratuito y 10 GB en el plan pago
 | ORM | `drizzle-orm` (driver `d1`) |
 | Migraciones | `drizzle-kit generate` + `wrangler d1 migrations apply` |
 | Autenticación | Sesiones opacas en D1 + HMAC-SHA256 con pepper |
-| Imágenes | R2 binding + endpoint `/media/*` |
+| Medios | R2 binding + endpoint `/media/*` |
 | Logs | `observability` de Workers + logs JSON estructurados |
 | Tests | `vitest` + `@cloudflare/vitest-plugin` |
 
@@ -513,9 +513,9 @@ En el MVP solo se implementa el rol `admin` y la creación del primer administra
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `POST` | `/api/admin/blogs/:blogId/media` | Sube una imagen a R2 (multipart). |
+| `POST` | `/api/admin/blogs/:blogId/media` | Sube una imagen WebP o un vídeo WebM a R2 (multipart). |
 | `DELETE` | `/api/admin/blogs/:blogId/media/:mediaId` | Elimina metadatos y objeto de R2. |
-| `GET` | `/media/:blogId/:filename` | Entrega pública de la imagen desde R2. |
+| `GET` | `/media/:blogId/:filename` | Entrega pública desde R2, con caché inmutable y soporte de `Range`. |
 
 ### 6.3. API pública
 
@@ -686,7 +686,7 @@ Se implementa autenticación propia, sin Cloudflare Access, para que funcione en
 
 - **SQL:** siempre prepared statements con `bind()`; nunca interpolación.
 - **Validación:** Zod en todos los bodies, params y query strings.
-- **Rich text:** el servidor convierte el JSON de Tiptap a HTML con una lista blanca de nodos y marcas; nunca guarda HTML enviado por el cliente. Los estilos de color, familia y tamaño se validan con expresiones regulares y las URLs de enlaces e imágenes se restringen a `http(s)`, `mailto`, `tel`, rutas absolutas y anclas. La API pública sirve ese HTML ya seguro.
+- **Rich text:** el servidor convierte el JSON de Tiptap a HTML con una lista blanca de nodos y marcas; nunca guarda HTML enviado por el cliente. Los estilos de color, familia y tamaño se validan con expresiones regulares y las URLs de enlaces, imágenes y vídeos se restringen a `http(s)`, `mailto`, `tel`, rutas absolutas y anclas. La API pública sirve ese HTML ya seguro.
 - **Cabeceras:** `secureHeaders` de Hono (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy`).
 - **CORS:** solo en la API pública; sin credenciales; `Access-Control-Allow-Origin` calculado desde `site_url` + `allowed_origins`; `Vary: Origin`.
 - **Rate limiting:** login (tabla `auth_attempts`) y API pública (límite por IP, Workers Rate Limiting binding o contador en D1).
@@ -741,7 +741,7 @@ Tipografía:
 3. **Blogs:** grid de tarjetas con nombre, descripción, URL, estado, número de artículos y acciones. Crear/editar en un drawer o página dedicada.
 4. **Workspace del blog:** cabecera con identidad del blog, enlace al sitio, toggle activo/inactivo y botón “Nuevo artículo”; tabs “Artículos” y “Ajustes”. En Ajustes se editan `site_url`, `allowed_origins`, descripción y estado.
 5. **Artículos:** barra de filtros (búsqueda, estado, orden), tabla en escritorio y tarjetas en móvil con portada, título, descripción, estado, fecha y acciones. Paginación.
-6. **Editor de artículo:** título, portada, descripción y vista previa de la miniatura en dos configuraciones en la columna principal; panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug); editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes las optimiza a WebP y las sube a R2 al guardar.
+6. **Editor de artículo:** título, portada, descripción y vista previa de la miniatura en dos configuraciones en la columna principal; panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug); editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, vídeos, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes y vídeos los optimiza a WebP/WebM y los sube a R2 al guardar.
 7. **Usuarios (post-MVP):** lista de usuarios, roles y estado; solo visible para `admin`.
 
 ### 9.4. Componentes y UX
@@ -773,14 +773,15 @@ No habrá una ruta global de artículos ni un buscador que mezcle artículos de 
 
 ---
 
-## 10. Editor rich text e imágenes
+## 10. Editor rich text, imágenes y vídeos
 
 - **Formato persistido:** `articles.body_json` guarda el documento JSON de Tiptap; `articles.body` guarda el HTML generado por el servidor. El JSON es la fuente de verdad editable y el HTML es lo que consume la API pública.
-- **Editor:** Tiptap 3 sobre ProseMirror, con toolbar de títulos (`h1`–`h3`), negrita, cursiva, subrayado, tachado, código en línea, listas, citas, bloque de código, separador, enlaces, imágenes, alineación, familia tipográfica, tamaño, color de texto y resaltado. Se carga con `React.lazy` para no engordar el bundle inicial.
+- **Editor:** Tiptap 3 sobre ProseMirror, con toolbar de títulos (`h1`-`h3`), negrita, cursiva, subrayado, tachado, código en línea, listas, citas, bloque de código, separador, enlaces, imágenes, vídeos, alineación, familia tipográfica, tamaño, color de texto y resaltado. Se carga con `React.lazy` para no engordar el bundle inicial.
 - **Extensiones compartidas:** `src/shared/richtext.ts` define las extensiones que usan tanto el editor como el renderizador del servidor, para que ambos acepten exactamente el mismo subconjunto.
 - **Renderizado seguro:** `src/server/lib/richtext.ts` recorre el JSON con una lista blanca de nodos y marcas, escapa texto y atributos, valida colores (`#rgb`, `#rrggbb`, `rgb()`, `hsl()`), familias (`[a-zA-Z0-9 ,'"-]`), tamaños (`px`, `rem`, `em`) y URLs. No usa DOM ni `happy-dom`, así que funciona igual en Workers y en tests. Un documento inválido responde `400 INVALID_CONTENT`.
 - **Fuentes:** el editor ofrece un catálogo de 106 Google Fonts populares con buscador (sans, serif, display, mono y manuscritas) y alternativas del sistema. La hoja de cada fuente se inyecta bajo demanda al seleccionarla o previsualizarla. El HTML guarda la familia con fallbacks locales; la web consumidora debe cargar las Google Fonts que use (ver `docs/API.md`).
 - **Portada:** el formulario incluye un campo con previsualización que usa el mismo pipeline de optimización y subida diferida que las imágenes del contenido. Se guarda en `articles.cover_image`, se muestra junto al título en el listado y se expone como `coverImage` en la API. Al reemplazarla o quitarla, la anterior se elimina de R2 y D1.
+- **Vídeos:** el editor inserta un nodo `video` con una URL local `blob:`. La conversión a **WebM (VP9/VP8 + Opus)** se hace en el navegador con Mediabunny y WebCodecs; el lado mayor se limita a **1920 px**, el audio a **128 kbps** y el archivo final a **50 MB**. La subida también es diferida al guardar y el vídeo retirado se elimina de R2 y D1. La API pública devuelve `<video controls playsinline preload="metadata">`.
 - **Imágenes:**
   - El editor permite pegar desde el portapapeles, arrastrar y soltar, o elegir un archivo.
   - En el navegador se optimiza a WebP (lado mayor máximo 2560 px, calidad 0.75) y se muestra con una URL `blob:`.
@@ -788,7 +789,7 @@ No habrá una ruta global de artículos ni un buscador que mezcle artículos de 
   - Se reemplazan las URLs `blob:` por las públicas antes de enviar `bodyJson`. Las imágenes retiradas de un artículo existente se eliminan de R2 y D1.
   - La URL es `https://<worker>.workers.dev/media/<blogId>/<uuid>.webp`, servida con `Cache-Control: public, max-age=31536000, immutable` y ETag.
   - También se puede insertar una URL externa manualmente.
-- **Límites:** 1 MB de `body_json`, 5 MB por imagen (WebP optimizado en el navegador).
+- **Límites:** 1 MB de `body_json`, 5 MB por imagen y 50 MB por vídeo (WebP/WebM optimizados en el navegador).
 - **Autoguardado:** no en MVP. Sí aviso de cambios sin guardar, guardado explícito y `Ctrl/Cmd + S`.
 
 ---

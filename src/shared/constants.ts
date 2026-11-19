@@ -6,6 +6,8 @@ export type ArticleStatus = (typeof articleStatusValues)[number]
 
 export const maxImageBytes = 5 * 1024 * 1024
 export const maxSourceImageBytes = 20 * 1024 * 1024
+export const maxVideoBytes = 50 * 1024 * 1024
+export const maxSourceVideoBytes = 250 * 1024 * 1024
 export const maxImageDimension = 2560
 export const webpQuality = 0.75
 
@@ -27,5 +29,18 @@ export const sourceImageMimeTypeValues = [
 ] as const
 export type SourceImageMimeType = (typeof sourceImageMimeTypeValues)[number]
 
-/** Único formato aceptado por la API de subida. */
+/** Formatos de vídeo que el navegador puede convertir a WebM antes de subir. */
+export const sourceVideoMimeTypeValues = [
+  "video/mp4",
+  "video/x-m4v",
+  "video/quicktime",
+  "video/webm",
+  "video/x-matroska",
+  "video/ogg",
+  "video/mp2t",
+] as const
+export type SourceVideoMimeType = (typeof sourceVideoMimeTypeValues)[number]
+
+/** Únicos formatos aceptados por la API de subida. */
 export const uploadImageMimeType = "image/webp"
+export const uploadVideoMimeType = "video/webm"

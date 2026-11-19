@@ -77,7 +77,7 @@ function safeHref(value: unknown): string | null {
   return null
 }
 
-function safeImageSrc(value: unknown): string | null {
+function safeMediaSrc(value: unknown): string | null {
   if (typeof value !== "string") {
     return null
   }
@@ -249,7 +249,7 @@ function renderNode(node: unknown, depth: number): string {
     case "horizontalRule":
       return "<hr>"
     case "image": {
-      const src = safeImageSrc(current.attrs?.src)
+      const src = safeMediaSrc(current.attrs?.src)
 
       if (!src) {
         throw new ApiError(400, "INVALID_CONTENT", "El contenido del artículo no es válido")
@@ -262,6 +262,20 @@ function renderNode(node: unknown, depth: number): string {
           : ""
 
       return `<img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}"${title}>`
+    }
+    case "video": {
+      const src = safeMediaSrc(current.attrs?.src)
+
+      if (!src) {
+        throw new ApiError(400, "INVALID_CONTENT", "El contenido del artículo no es válido")
+      }
+
+      const title =
+        typeof current.attrs?.title === "string" && current.attrs.title.length > 0
+          ? ` title="${escapeAttribute(current.attrs.title)}"`
+          : ""
+
+      return `<video controls playsinline preload="metadata" style="max-width: 100%; height: auto" src="${escapeAttribute(src)}"${title}></video>`
     }
     default:
       throw new ApiError(400, "INVALID_CONTENT", "El contenido del artículo no es válido")

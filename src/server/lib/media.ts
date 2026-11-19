@@ -1,10 +1,11 @@
-import { maxImageBytes, type ImageMimeType } from "../../shared/constants"
+import { maxImageBytes, maxVideoBytes, type ImageMimeType } from "../../shared/constants"
 
 export const MAX_IMAGE_BYTES = maxImageBytes
+export const MAX_VIDEO_BYTES = maxVideoBytes
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const mediaFilenamePattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(avif|gif|jpe?g|png|webp)$/i
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(avif|gif|jpe?g|png|webm|webp)$/i
 
 export function isUuid(value: string): boolean {
   return uuidPattern.test(value)
@@ -16,6 +17,16 @@ export function isMediaFilename(value: string): boolean {
 
 function ascii(bytes: Uint8Array, start: number, length: number): string {
   return String.fromCharCode(...bytes.slice(start, start + length))
+}
+
+export function isWebm(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x1a &&
+    bytes[1] === 0x45 &&
+    bytes[2] === 0xdf &&
+    bytes[3] === 0xa3
+  )
 }
 
 export function detectImageMime(bytes: Uint8Array): ImageMimeType | null {
@@ -76,9 +87,9 @@ export function mediaUrl(blogId: string, filename: string): string {
 }
 
 const mediaPathPattern =
-  /\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:avif|gif|jpe?g|png|webp))/gi
+  /\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:avif|gif|jpe?g|png|webm|webp))/gi
 
-/** Nombres de fichero de las imágenes del blog referenciadas en el HTML. */
+/** Nombres de fichero de imágenes y vídeos del blog referenciados en el HTML. */
 export function extractMediaFilenames(html: string, blogId: string): string[] {
   const filenames = new Set<string>()
   const normalizedBlogId = blogId.toLowerCase()

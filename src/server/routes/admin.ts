@@ -34,7 +34,7 @@ import {
   getBlogOrThrow,
   updateBlogFromInput,
 } from "../services/blogService"
-import { deleteBlogImage, deleteMediaObjects, storeImage } from "../services/mediaService"
+import { deleteBlogMedia, deleteMediaObjects, storeMedia } from "../services/mediaService"
 import type { AppEnv } from "../types"
 
 const adminRoutes = new Hono<AppEnv>()
@@ -169,10 +169,10 @@ adminRoutes.post("/blogs/:blogId/media", async (c) => {
   const file = form.get("file")
 
   if (!(file instanceof File)) {
-    throw new ApiError(400, "FILE_REQUIRED", "Adjunta una imagen en el campo «file»")
+    throw new ApiError(400, "FILE_REQUIRED", "Adjunta un archivo en el campo «file»")
   }
 
-  const media = await storeImage(c.env.MEDIA, db, blog.id, file)
+  const media = await storeMedia(c.env.MEDIA, db, blog.id, file)
 
   return c.json({ data: toMediaDto(media, new URL(c.req.url).origin) }, 201)
 })
@@ -181,7 +181,7 @@ adminRoutes.delete("/blogs/:blogId/media/:mediaId", requireAdmin, async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
 
-  await deleteBlogImage(c.env.MEDIA, db, blog.id, c.req.param("mediaId"))
+  await deleteBlogMedia(c.env.MEDIA, db, blog.id, c.req.param("mediaId"))
 
   return c.body(null, 204)
 })

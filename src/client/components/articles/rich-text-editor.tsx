@@ -10,11 +10,13 @@ export function RichTextEditor({
   initialHtml,
   onChange,
   onUploadImage,
+  onUploadVideo,
 }: {
   initialJson: string | null
   initialHtml: string
   onChange: (bodyJson: string) => void
   onUploadImage: (file: File) => Promise<string>
+  onUploadVideo: (file: File) => Promise<string>
 }) {
   return (
     <Suspense
@@ -30,6 +32,7 @@ export function RichTextEditor({
         initialHtml={initialHtml}
         onChange={onChange}
         onUploadImage={onUploadImage}
+        onUploadVideo={onUploadVideo}
       />
     </Suspense>
   )

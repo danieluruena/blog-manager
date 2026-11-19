@@ -218,7 +218,7 @@ Crear artículo:
 - `bodyJson`: fuente de verdad editable.
 - `body`: HTML generado, listo para servir en la API pública.
 
-El HTML solo admite párrafos, títulos (`h1`–`h3`), listas, citas, código, enlaces, imágenes, separadores y las marcas de negrita, cursiva, subrayado, tachado, código, resaltado, color de texto, familia y tamaño de fuente, además de la alineación. Cualquier nodo o atributo fuera de esa lista responde `400 INVALID_CONTENT`.
+El HTML solo admite párrafos, títulos (`h1`–`h3`), listas, citas, código, enlaces, imágenes, vídeos, separadores y las marcas de negrita, cursiva, subrayado, tachado, código, resaltado, color de texto, familia y tamaño de fuente, además de la alineación. Cualquier nodo o atributo fuera de esa lista responde `400 INVALID_CONTENT`.
 
 Un documento mínimo válido es:
 
@@ -229,7 +229,21 @@ Un documento mínimo válido es:
 }
 ```
 
-`coverImage` es opcional y acepta una URL `http(s)` o una ruta absoluta. Normalmente será la URL devuelta por el endpoint de imágenes. En un `PATCH`, `null` elimina la portada y omitirlo deja la actual. La portada se asocia al artículo y se elimina de R2 y D1 cuando se reemplaza, se quita o se borra el artículo.
+Un vídeo se representa con un nodo `video`:
+
+```json
+{
+  "type": "video",
+  "attrs": {
+    "src": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webm",
+    "title": "Demostración"
+  }
+}
+```
+
+El servidor lo convierte en `<video controls playsinline preload="metadata" style="max-width: 100%; height: auto" src="…"></video>`.
+
+`coverImage` es opcional y acepta una URL `http(s)` o una ruta absoluta. Normalmente será la URL devuelta por el endpoint de medios. En un `PATCH`, `null` elimina la portada y omitirlo deja la actual. La portada se asocia al artículo y se elimina de R2 y D1 cuando se reemplaza, se quita o se borra el artículo.
 
 Reglas:
 
@@ -239,21 +253,21 @@ Reglas:
 - Si se publica (`published` o `featured`) sin `publishedAt`, el servidor asigna la fecha actual.
 - Un artículo de otro blog bajo la URL de este responde `404`, no `403`.
 
-### Imágenes
+### Imágenes y vídeos
 
 | Método   | Ruta                                          | Descripción                        |
 | -------- | --------------------------------------------- | ---------------------------------- |
-| `POST`   | `/api/admin/blogs/:blogId/media`              | Sube una imagen (`multipart/form-data`, campo `file`) |
-| `DELETE` | `/api/admin/blogs/:blogId/media/:mediaId`     | Elimina la imagen de D1 y R2 (solo admin) |
-| `GET`    | `/media/:blogId/:filename`                    | Sirve la imagen con caché inmutable |
+| `POST`   | `/api/admin/blogs/:blogId/media`              | Sube un archivo (`multipart/form-data`, campo `file`) |
+| `DELETE` | `/api/admin/blogs/:blogId/media/:mediaId`     | Elimina el archivo de D1 y R2 (solo admin) |
+| `GET`    | `/media/:blogId/:filename`                    | Sirve el archivo con caché inmutable y soporte de rangos |
 
 Límites y formatos:
 
-- El endpoint acepta **solo `image/webp`**. El editor convierte JPEG, PNG, WebP y AVIF a WebP en el navegador antes de subirlos; los GIF animados no están soportados.
-- Optimización en el cliente: lado mayor máximo **2560 px** y calidad **0.75**. La imagen de origen puede pesar hasta **20 MB**.
-- Tamaño máximo del WebP subido: **5 MB**. Por encima responde `413 FILE_TOO_LARGE`.
-- Se comprueban los bytes mágicos: si el contenido no es un WebP válido responde `415 INVALID_IMAGE`, y si no se declara como `image/webp`, `415 UNSUPPORTED_MEDIA_TYPE`.
-- La respuesta incluye una URL absoluta (`url`) lista para usar como `src` de un nodo `image`:
+- El endpoint acepta **`image/webp`** y **`video/webm`**. El editor convierte las imágenes a WebP y los vídeos a WebM en el navegador antes de subirlos.
+- Imágenes: origen JPEG, PNG, WebP o AVIF de hasta **20 MB**; optimización a WebP con lado mayor máximo **2560 px** y calidad **0.75**; WebP final de hasta **5 MB**.
+- Vídeos: origen MP4, MOV, WebM/MKV, OGG o TS de hasta **250 MB**; se convierten a **WebM (VP9/VP8 + Opus)**, con el lado mayor limitado a **1920 px** y audio a **128 kbps**. El WebM final puede pesar hasta **50 MB**.
+- Por encima de los límites responde `413 FILE_TOO_LARGE`. Se comprueban los bytes mágicos: un WebP inválido responde `415 INVALID_IMAGE`, un WebM inválido `415 INVALID_VIDEO`, y un tipo no admitido `415 UNSUPPORTED_MEDIA_TYPE`.
+- La respuesta incluye una URL absoluta (`url`) lista para usar como `src` de un nodo `image` o `video`:
 
 ```json
 {
@@ -269,9 +283,11 @@ Límites y formatos:
 }
 ```
 
-La entrega usa `Cache-Control: public, max-age=31536000, immutable`, `ETag` (responde `304` con `If-None-Match`), `Content-Type` del objeto y `X-Content-Type-Options: nosniff`.
+Un vídeo devuelve el mismo DTO con `filename` y `url` terminados en `.webm` y `mimeType: "video/webm"`.
 
-Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes presentes en el documento y la portada quedan asociadas a él; las que se han quitado se eliminan de R2 y D1. Una imagen pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus imágenes, incluida la portada, y al eliminar un blog sin artículos se limpian las que hayan quedado sin asignar.
+La entrega usa `Cache-Control: public, max-age=31536000, immutable`, `ETag` (responde `304` con `If-None-Match`), `Content-Type` del objeto, `Accept-Ranges: bytes` y `X-Content-Type-Options: nosniff`. Las peticiones `Range` responden `206` con `Content-Range`, lo que permite buscar dentro del vídeo.
+
+Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes y vídeos presentes en el documento, y la portada, quedan asociados a él; los que se han quitado se eliminan de R2 y D1. Un archivo pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus archivos, incluida la portada, y al eliminar un blog sin artículos se limpian los que hayan quedado sin asignar.
 
 ### Estadísticas
 
@@ -364,7 +380,7 @@ Detalle de artículo:
 }
 ```
 
-El campo `body` ya es HTML seguro generado en el servidor: la web consumidora puede insertarlo directamente sin volver a renderizar markdown. `coverImage` es la miniatura del artículo y puede ser `null`.
+El campo `body` ya es HTML seguro generado en el servidor: la web consumidora puede insertarlo directamente sin volver a renderizar markdown. Puede incluir imágenes y vídeos con URLs absolutas. `coverImage` es la miniatura del artículo y puede ser `null`.
 
 ### Fuentes en las webs consumidoras
 

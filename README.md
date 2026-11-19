@@ -106,14 +106,15 @@ npm run db:seed
 
 `db:seed` carga 2 blogs y 8 artículos de ejemplo con estados variados. Es idempotente: puedes ejecutarlo varias veces sin duplicar los datos.
 
-### Imágenes en R2
+### Imágenes y vídeos en R2
 
 - El navegador optimiza cada imagen antes de subirla: la convierte a **WebP**, limita el lado mayor a **2560 px** y usa calidad **0.75**. Se aceptan como origen JPEG, PNG, WebP y AVIF de hasta 20 MB (sin GIF animado); el WebP final no puede superar 5 MB.
-- Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el documento.
+- Los vídeos se convierten a **WebM (VP9/VP8 + Opus)** en el navegador con Mediabunny y WebCodecs. Se aceptan MP4, MOV, WebM/MKV, OGG y TS de hasta 250 MB; el lado mayor se limita a 1920 px, el audio a 128 kbps y el WebM final a 50 MB. Requiere un navegador con WebCodecs (Chrome, Edge o Safari actualizado).
+- Puedes pegar o arrastrar imágenes **y vídeos** directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente los que sigan presentes en el documento.
 - Cada artículo puede tener una **imagen de portada** con previsualización. Usa el mismo pipeline: se optimiza en el navegador y se sube al guardar. Aparece junto al título en el listado y en el campo `coverImage` de la API.
-- Cada imagen pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen o la portada y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de una imagen de otro artículo.
-- Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes).
-- En local los objetos se guardan en `.wrangler/state/v3/r2`; al borrar un artículo o un blog sin artículos se limpian también sus imágenes.
+- Cada archivo pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen, un vídeo o la portada y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de un archivo de otro artículo.
+- Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes-y-vídeos).
+- En local los objetos se guardan en `.wrangler/state/v3/r2`; al borrar un artículo o un blog sin artículos se limpian también sus archivos.
 
 ### Crear un usuario administrador local
 
@@ -158,7 +159,7 @@ Rutas principales:
 | `/blogs/:blogId/articles/:articleId` | Edición de un artículo                  |
 | `/blogs/:blogId/settings`            | Ajustes del blog                        |
 
-El editor de artículos usa **Tiptap** con carga diferida. Guarda el documento JSON en `body_json` y el servidor genera el HTML que sirve la API pública. Permite familias tipográficas, tamaños, colores, resaltado, alineación, enlaces, imágenes, listas, citas y código. Las imágenes se previsualizan en local y se suben a R2 al guardar el artículo. El formulario incluye además una portada con previsualización que se muestra junto al título en el listado.
+El editor de artículos usa **Tiptap** con carga diferida. Guarda el documento JSON en `body_json` y el servidor genera el HTML que sirve la API pública. Permite familias tipográficas, tamaños, colores, resaltado, alineación, enlaces, imágenes, vídeos, listas, citas y código. Las imágenes y los vídeos se previsualizan en local y se suben a R2 al guardar el artículo. El formulario incluye además una portada con previsualización que se muestra junto al título en el listado.
 
 El editor ofrece un catálogo de **106 Google Fonts populares** con buscador, agrupadas en sans, serif, display, mono y manuscritas, además de alternativas del sistema. Las fuentes se cargan bajo demanda: solo se descarga la que se usa o se previsualiza.
 

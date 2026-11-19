@@ -25,6 +25,7 @@ import {
   Strikethrough,
   Underline,
   Undo2,
+  Video,
 } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
 
@@ -61,6 +62,7 @@ type TiptapEditorProps = {
   initialHtml: string
   onChange: (bodyJson: string) => void
   onUploadImage: (file: File) => Promise<string>
+  onUploadVideo: (file: File) => Promise<string>
 }
 
 function initialContent(initialJson: string | null, initialHtml: string): JSONContent | string {
@@ -132,11 +134,14 @@ export function TiptapEditor({
   initialHtml,
   onChange,
   onUploadImage,
+  onUploadVideo,
 }: TiptapEditorProps) {
   const onChangeRef = useRef(onChange)
   const onUploadImageRef = useRef(onUploadImage)
+  const onUploadVideoRef = useRef(onUploadVideo)
   const editorRef = useRef<Editor | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
   const textColorInputRef = useRef<HTMLInputElement>(null)
   const highlightInputRef = useRef<HTMLInputElement>(null)
   const [linkOpen, setLinkOpen] = useState(false)
@@ -144,6 +149,7 @@ export function TiptapEditor({
 
   onChangeRef.current = onChange
   onUploadImageRef.current = onUploadImage
+  onUploadVideoRef.current = onUploadVideo
 
   async function insertImages(files: File[]) {
     const current = editorRef.current
@@ -156,6 +162,27 @@ export function TiptapEditor({
       try {
         const url = await onUploadImageRef.current(file)
         current.chain().focus().setImage({ src: url }).run()
+      } catch {
+        // El toast de error lo muestra el manejador de subida.
+      }
+    }
+  }
+
+  async function insertVideos(files: File[]) {
+    const current = editorRef.current
+
+    if (!current) {
+      return
+    }
+
+    for (const file of files) {
+      try {
+        const url = await onUploadVideoRef.current(file)
+        current
+          .chain()
+          .focus()
+          .insertContent({ type: "video", attrs: { src: url } })
+          .run()
       } catch {
         // El toast de error lo muestra el manejador de subida.
       }
@@ -180,14 +207,23 @@ export function TiptapEditor({
     files: FileList | null | undefined,
     event: ClipboardEvent | DragEvent,
   ): boolean {
-    const images = files ? Array.from(files).filter((file) => file.type.startsWith("image/")) : []
+    const list = files ? Array.from(files) : []
+    const images = list.filter((file) => file.type.startsWith("image/"))
+    const videos = list.filter((file) => file.type.startsWith("video/"))
 
-    if (images.length === 0) {
+    if (images.length === 0 && videos.length === 0) {
       return false
     }
 
     event.preventDefault()
-    void insertImages(images)
+
+    if (images.length > 0) {
+      void insertImages(images)
+    }
+
+    if (videos.length > 0) {
+      void insertVideos(videos)
+    }
 
     return true
   }
@@ -608,6 +644,13 @@ export function TiptapEditor({
             <ImagePlus className="size-4" />
           </ToolbarButton>
           <ToolbarButton
+            label="Insertar vídeo"
+            disabled={disabled}
+            onClick={() => videoInputRef.current?.click()}
+          >
+            <Video className="size-4" />
+          </ToolbarButton>
+          <ToolbarButton
             label="Limpiar formato"
             disabled={disabled}
             onClick={() => chain()?.unsetAllMarks().clearNodes().run()}
@@ -639,6 +682,22 @@ export function TiptapEditor({
 
           if (file) {
             void insertImages([file])
+          }
+
+          event.target.value = ""
+        }}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/mp4,video/x-m4v,video/webm,video/quicktime,video/x-matroska,video/ogg,video/mp2t"
+        aria-label="Archivo de vídeo"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[event.target.files.length - 1]
+
+          if (file) {
+            void insertVideos([file])
           }
 
           event.target.value = ""
