@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. Fase 8 completada: D1/R2 remotos, secreto, migraciones, despliegue y pipeline. Fase 9 completada: editor rich text con Tiptap, `body_json`, renderizado HTML seguro y conversión de artículos locales.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. Fase 8 completada: D1/R2 remotos, secreto, migraciones, despliegue y pipeline. Fase 9 completada: editor rich text con Tiptap, `body_json`, renderizado HTML seguro y conversión de artículos locales. Fase 10 completada: imagen de portada con previsualización, subida diferida y miniatura en el listado.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -32,6 +32,7 @@
 - CRUD de artículos por blog: título, slug, descripción corta, autor, fechas, estado y contenido rich text.
 - Estados: `draft`, `published`, `hidden`, `featured`.
 - Editor rich text con fuentes, tamaños, colores, resaltado, alineación, enlaces, imágenes, listas, citas y código.
+- Imagen de portada por artículo con previsualización y miniatura en el listado.
 - Persistencia del documento Tiptap en `body_json`; el servidor genera y sirve el HTML de `body`.
 - Subida de imágenes a R2 al pegar, arrastrar o seleccionar; optimización a WebP y subida diferida al guardar.
 - API pública de solo lectura, versionada, aislada por blog y con CORS.
@@ -72,6 +73,7 @@
 | 7 | Hardening, tests, accesibilidad y rendimiento | 1–2 días |
 | 8 | Despliegue y documentación | 0,5–1 día |
 | 9 | Editor rich text, `body_json` y migración de contenido | 2–3 días |
+| 10 | Imagen de portada y miniatura en el listado | 0,5–1 día |
 
 **Total orientativo:** 11–17 días de trabajo efectivo. El MVP funcional (fases 0–6) se puede tener en 10–14 días; la diferencia depende sobre todo del editor y de las pruebas de auth/CORS.
 
@@ -556,7 +558,34 @@ Sustituir el editor markdown por un editor rich text que permita fuentes, tamañ
 
 ---
 
-## 15. Definition of Done (MVP)
+## 15. Fase 10 — Imagen de portada
+
+### Objetivo
+
+Permitir una imagen de portada por artículo, visible junto al título en el listado y en la API pública, reutilizando el pipeline de imágenes existente.
+
+### Tareas
+
+- [x] Migración `0003_article_cover_image` con la columna `cover_image`.
+- [x] Campo `coverImage` en la entrada de la API y en los DTO de resumen y detalle.
+- [x] Campo de portada en el formulario con previsualización, cambio y borrado.
+- [x] Optimización a WebP y subida diferida al guardar, junto a las imágenes del contenido.
+- [x] Asociación de la portada al artículo y limpieza de la anterior en R2 y D1.
+- [x] Miniatura en el listado de artículos y exposición en la API pública.
+- [x] Tests de creación, reemplazo, borrado y reutilización indebida.
+- [x] Documentación actualizada.
+
+### Criterios de aceptación
+
+- La portada se previsualiza en local antes de guardar y se sube solo al guardar.
+- Se guarda como WebP en R2 y aparece junto al título en el listado.
+- Reemplazarla o quitarla elimina la imagen anterior de R2 y D1.
+- La API pública devuelve `coverImage` en listado y detalle.
+- `typecheck`, `lint`, `test`, `build`, `format:check` y `audit` pasan.
+
+---
+
+## 16. Definition of Done (MVP)
 
 El MVP se considera terminado cuando:
 
@@ -567,7 +596,7 @@ El MVP se considera terminado cuando:
 - [ ] Se pueden crear, editar, publicar, ocultar, destacar y borrar artículos.
 - [ ] Cada artículo pertenece a un único blog y la UI/API respetan el aislamiento.
 - [ ] El body es rich text, se guarda en `body_json` y la API devuelve HTML.
-- [ ] Se pueden pegar/arrastrar imágenes y se suben a R2.
+- [ ] Se pueden pegar/arrastrar imágenes y se suben a R2; cada artículo puede tener una portada con miniatura en el listado.
 - [ ] La API pública devuelve solo artículos visibles del blog solicitado y respeta CORS.
 - [ ] La interfaz es oscura, responsive y usable en móvil.
 - [ ] `typecheck`, `lint`, `test` y `build` pasan.
@@ -576,7 +605,7 @@ El MVP se considera terminado cuando:
 
 ---
 
-## 16. Orden de trabajo recomendado
+## 17. Orden de trabajo recomendado
 
 1. **Fase 0:** esqueleto desplegable con `/api/health` y bootstrap.
 2. **Fase 1:** esquema, repositorios, hashing y CLI de admin, con tests.
@@ -585,6 +614,7 @@ El MVP se considera terminado cuando:
 5. **Fase 5–6:** artículos, editor e imágenes.
 6. **Fase 7–8:** hardening, despliegue y documentación.
 7. **Fase 9:** editor rich text, migración de contenido y nuevo contrato de la API.
+8. **Fase 10:** imagen de portada y miniatura en el listado.
 
 La razón del orden: el modelo de datos y la API son la fuente de verdad; la UI se construye sobre contratos probados. El aislamiento, el bloqueo de borrado y CORS se validan antes de que exista interfaz, para no arrastrar fallos de diseño.
 
@@ -592,7 +622,7 @@ La razón del orden: el modelo de datos y la API son la fuente de verdad; la UI 
 
 ---
 
-## 17. Primeros comandos propuestos
+## 18. Primeros comandos propuestos
 
 El repositorio ya contiene `docs/`, así que el scaffold se hace en una carpeta temporal y se integra, o se inicializa manualmente:
 

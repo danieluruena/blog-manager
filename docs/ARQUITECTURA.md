@@ -227,6 +227,7 @@ erDiagram
         text author
         text body
         text body_json
+        text cover_image
         text status
         text created_at
         text published_at
@@ -302,6 +303,7 @@ CREATE TABLE articles (
   author       TEXT NOT NULL,
   body         TEXT NOT NULL DEFAULT '',
   body_json    TEXT,
+  cover_image  TEXT,
   status       TEXT NOT NULL DEFAULT 'draft'
                CHECK (status IN ('draft', 'published', 'hidden', 'featured')),
   created_at   TEXT NOT NULL,
@@ -385,6 +387,7 @@ CREATE TABLE media (
 | `author` | string | 1–120 caracteres, obligatorio. |
 | `body` | HTML | HTML generado en el servidor a partir de `body_json`; es lo que sirve la API pública. |
 | `body_json` | JSON (texto) | Documento Tiptap serializado, hasta 1 MB. Fuente de verdad editable. `NULL` en artículos anteriores a la migración `0002`. |
+| `cover_image` | URL o `NULL` | Imagen de portada. Se muestra en listados y en la API pública; se sube con el mismo endpoint de medios y se limpia al reemplazarla o quitarla. |
 | `status` | enum | `draft`, `published`, `hidden`, `featured`. |
 | `created_at` | ISO 8601 | UTC, generado por el servidor. Inmutable. |
 | `published_at` | ISO 8601 o `null` | Fecha de publicación editable. Si se publica sin fecha, el servidor pone `now`. |
@@ -563,6 +566,7 @@ El detalle público incluye `body` en HTML ya sanitizado y los datos del blog:
     "title": "Mi artículo",
     "slug": "mi-articulo",
     "excerpt": "Resumen corto",
+    "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
     "author": "Autor",
     "body": "<p>Contenido con <span style=\"color: #dc2626\">estilo</span>…</p>",
     "status": "published",
@@ -602,6 +606,7 @@ Crear artículo:
   "excerpt": "Una introducción breve.",
   "author": "Primigenios",
   "bodyJson": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Introducción\"}]}]}",
+  "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
   "status": "draft",
   "publishedAt": null
 }
@@ -736,7 +741,7 @@ Tipografía:
 3. **Blogs:** grid de tarjetas con nombre, descripción, URL, estado, número de artículos y acciones. Crear/editar en un drawer o página dedicada.
 4. **Workspace del blog:** cabecera con identidad del blog, enlace al sitio, toggle activo/inactivo y botón “Nuevo artículo”; tabs “Artículos” y “Ajustes”. En Ajustes se editan `site_url`, `allowed_origins`, descripción y estado.
 5. **Artículos:** barra de filtros (búsqueda, estado, orden), tabla con título, autor, estado, fecha de publicación, actualización y acciones. Paginación.
-6. **Editor de artículo:** título grande, panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug), editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes las optimiza a WebP y las sube a R2 al guardar.
+6. **Editor de artículo:** título grande, panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug) y portada con previsualización, editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes las optimiza a WebP y las sube a R2 al guardar.
 7. **Usuarios (post-MVP):** lista de usuarios, roles y estado; solo visible para `admin`.
 
 ### 9.4. Componentes y UX
@@ -775,6 +780,7 @@ No habrá una ruta global de artículos ni un buscador que mezcle artículos de 
 - **Extensiones compartidas:** `src/shared/richtext.ts` define las extensiones que usan tanto el editor como el renderizador del servidor, para que ambos acepten exactamente el mismo subconjunto.
 - **Renderizado seguro:** `src/server/lib/richtext.ts` recorre el JSON con una lista blanca de nodos y marcas, escapa texto y atributos, valida colores (`#rgb`, `#rrggbb`, `rgb()`, `hsl()`), familias (`[a-zA-Z0-9 ,'"-]`), tamaños (`px`, `rem`, `em`) y URLs. No usa DOM ni `happy-dom`, así que funciona igual en Workers y en tests. Un documento inválido responde `400 INVALID_CONTENT`.
 - **Fuentes:** el editor ofrece un catálogo de 106 Google Fonts populares con buscador (sans, serif, display, mono y manuscritas) y alternativas del sistema. La hoja de cada fuente se inyecta bajo demanda al seleccionarla o previsualizarla. El HTML guarda la familia con fallbacks locales; la web consumidora debe cargar las Google Fonts que use (ver `docs/API.md`).
+- **Portada:** el formulario incluye un campo con previsualización que usa el mismo pipeline de optimización y subida diferida que las imágenes del contenido. Se guarda en `articles.cover_image`, se muestra junto al título en el listado y se expone como `coverImage` en la API. Al reemplazarla o quitarla, la anterior se elimina de R2 y D1.
 - **Imágenes:**
   - El editor permite pegar desde el portapapeles, arrastrar y soltar, o elegir un archivo.
   - En el navegador se optimiza a WebP (lado mayor máximo 2560 px, calidad 0.75) y se muestra con una URL `blob:`.
@@ -1006,7 +1012,7 @@ Pero en este proyecto también añadiría:
 |---|---|
 | Autenticación | Login propio multiusuario. |
 | Host | Un único host gratuito `*.workers.dev`. |
-| Imágenes | R2 desde el MVP, con pegar/arrastrar y subida inmediata. |
+| Imágenes | R2 desde el MVP, con pegar/arrastrar y subida diferida al guardar. |
 | Consumo público | Desde el navegador; CORS por blog (`site_url` + `allowed_origins`). |
 | Borrado de blogs | Bloqueado si tiene artículos (`409 BLOG_HAS_ARTICLES`). |
 | Usuarios | Multiusuario desde el esquema; un administrador inicial. |

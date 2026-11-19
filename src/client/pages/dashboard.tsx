@@ -146,6 +146,20 @@ export function DashboardPage() {
                     to={`/blogs/${article.blogId}/articles/${article.id}`}
                     className="flex items-center gap-4 py-3 transition-colors first:pt-0 last:pb-0 hover:text-ink"
                   >
+                    <div className="relative aspect-video w-12 shrink-0 overflow-hidden rounded border border-line bg-surface-2">
+                      {article.coverImage ? (
+                        <img
+                          src={article.coverImage}
+                          alt=""
+                          loading="lazy"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-muted-foreground">
+                          <FileText className="size-3.5" />
+                        </div>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-ink">{article.title}</p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">

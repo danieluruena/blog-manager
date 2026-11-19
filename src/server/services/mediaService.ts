@@ -93,8 +93,8 @@ export async function deleteMediaObjects(bucket: R2Bucket, keys: string[]): Prom
 }
 
 /**
- * Devuelve las filas de `media` referenciadas en el HTML del artículo, sin
- * validar a qué artículo pertenecen.
+ * Devuelve las filas de `media` referenciadas en el HTML del artículo o en su
+ * portada, sin validar a qué artículo pertenecen.
  */
 export async function findReferencedMedia(
   db: Database,
@@ -111,8 +111,9 @@ export async function findReferencedMedia(
 }
 
 /**
- * Devuelve las filas de `media` referenciadas en el markdown. Si alguna
- * pertenece a otro artículo, rechaza el guardado para no compartir objetos.
+ * Devuelve las filas de `media` referenciadas en el HTML o la portada. Si
+ * alguna pertenece a otro artículo, rechaza el guardado para no compartir
+ * objetos.
  */
 export async function resolveReferencedMedia(
   db: Database,

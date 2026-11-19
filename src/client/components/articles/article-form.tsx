@@ -44,6 +44,7 @@ import {
 import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Textarea } from "../ui/textarea"
+import { CoverImageField } from "./cover-image-field"
 import { DeleteArticleDialog } from "./delete-article-dialog"
 import { RichTextEditor } from "./rich-text-editor"
 
@@ -196,11 +197,16 @@ export function ArticleForm({
 
   async function save(values: ArticleFormValues, nextStatus: ArticleStatus) {
     try {
-      const bodyJson = await resolvePendingImages(values.bodyJson)
+      const bodyBlobUrls = extractBlobImageUrls(values.bodyJson)
+      const coverBlobUrl = values.coverImage?.startsWith("blob:") ? values.coverImage : null
+      const blobUrls = [...new Set([...bodyBlobUrls, ...(coverBlobUrl ? [coverBlobUrl] : [])])]
+      const replacements = await uploadPendingImages(blobUrls)
+      const bodyJson = replaceBlobImageUrls(values.bodyJson, replacements)
+      const coverImage = coverBlobUrl ? (replacements.get(coverBlobUrl) ?? null) : values.coverImage
 
-      mutation.mutate({ values: { ...values, bodyJson }, status: nextStatus })
+      mutation.mutate({ values: { ...values, bodyJson, coverImage }, status: nextStatus })
     } catch {
-      // resolvePendingImages ya muestra el error.
+      // uploadPendingImages ya muestra el error.
     }
   }
 
@@ -238,19 +244,17 @@ export function ArticleForm({
     }
   }
 
-  async function resolvePendingImages(bodyJson: string): Promise<string> {
-    const blobUrls = extractBlobImageUrls(bodyJson)
+  async function uploadPendingImages(blobUrls: string[]): Promise<Map<string, string>> {
+    const replacements = new Map<string, string>()
 
     if (blobUrls.length === 0) {
-      return bodyJson
+      return replacements
     }
 
     setIsUploading(true)
     const toastId = toast.loading(blobUrls.length === 1 ? "Subiendo imagen…" : "Subiendo imágenes…")
 
     try {
-      const replacements = new Map<string, string>()
-
       await Promise.all(
         blobUrls.map(async (blobUrl) => {
           const alreadyUploaded = uploadedImagesRef.current.get(blobUrl)
@@ -277,7 +281,7 @@ export function ArticleForm({
         id: toastId,
       })
 
-      return replaceBlobImageUrls(bodyJson, replacements)
+      return replacements
     } catch (uploadError) {
       toast.error(
         uploadError instanceof Error ? uploadError.message : "No se pudieron subir las imágenes",
@@ -490,6 +494,32 @@ export function ArticleForm({
                           ? "Identificador de la URL. Cámbialo solo si es necesario."
                           : "Si lo dejas vacío, se genera desde el título."}
                       </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="border-line bg-surface">
+              <CardHeader className="px-5">
+                <CardTitle className="text-base">Portada</CardTitle>
+                <CardDescription>
+                  Se muestra junto al título en los listados y en la API pública.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-5">
+                <FormField
+                  control={form.control}
+                  name="coverImage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <CoverImageField
+                        value={field.value}
+                        disabled={isBusy}
+                        onChange={field.onChange}
+                        onSelect={stageImage}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}

@@ -15,6 +15,7 @@ const article: ArticleDto = {
   title: "Artículo de prueba",
   slug: "articulo-de-prueba",
   excerpt: "Un resumen",
+  coverImage: "https://blog-manager.example.com/media/blog/portada.webp",
   author: "Daniel",
   status: "published",
   body: "<h1>Hola</h1>",
@@ -43,6 +44,7 @@ describe("article form", () => {
       status: "draft",
       publishedAt: "",
       bodyJson: EMPTY_RICH_TEXT_JSON,
+      coverImage: null,
     })
 
     const values = toFormValues(article, "Admin")
@@ -50,6 +52,7 @@ describe("article form", () => {
     expect(values.title).toBe(article.title)
     expect(values.author).toBe(article.author)
     expect(values.status).toBe("published")
+    expect(values.coverImage).toBe(article.coverImage)
     expect(values.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
   })
 
@@ -60,6 +63,7 @@ describe("article form", () => {
     expect(input).not.toHaveProperty("slug")
     expect(input.publishedAt).toBeNull()
     expect(input.status).toBe("draft")
+    expect(input.coverImage).toBeNull()
   })
 
   it("incluye el slug y la fecha cuando están presentes", () => {

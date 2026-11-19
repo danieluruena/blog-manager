@@ -187,7 +187,7 @@ Todos los artículos están anidados bajo un blog:
 | -------- | ---------------------------------------------- | ------------------------------ |
 | `GET`    | `/api/admin/blogs/:blogId/articles`            | Lista con filtros y paginación |
 | `POST`   | `/api/admin/blogs/:blogId/articles`            | Crea un artículo               |
-| `GET`    | `/api/admin/blogs/:blogId/articles/:articleId` | Detalle con `body` y `bodyJson` |
+| `GET`    | `/api/admin/blogs/:blogId/articles/:articleId` | Detalle con `body`, `bodyJson` y `coverImage` |
 | `PATCH`  | `/api/admin/blogs/:blogId/articles/:articleId` | Actualiza campos parciales     |
 | `DELETE` | `/api/admin/blogs/:blogId/articles/:articleId` | Elimina el artículo            |
 
@@ -207,6 +207,7 @@ Crear artículo:
   "excerpt": "Una introducción breve",
   "author": "Daniel",
   "bodyJson": "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Introducción\"}]}]}",
+  "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
   "status": "draft",
   "publishedAt": null
 }
@@ -227,6 +228,8 @@ Un documento mínimo válido es:
   "content": [{ "type": "paragraph" }]
 }
 ```
+
+`coverImage` es opcional y acepta una URL `http(s)` o una ruta absoluta. Normalmente será la URL devuelta por el endpoint de imágenes. En un `PATCH`, `null` elimina la portada y omitirlo deja la actual. La portada se asocia al artículo y se elimina de R2 y D1 cuando se reemplaza, se quita o se borra el artículo.
 
 Reglas:
 
@@ -267,7 +270,7 @@ Límites y formatos:
 
 La entrega usa `Cache-Control: public, max-age=31536000, immutable`, `ETag` (responde `304` con `If-None-Match`), `Content-Type` del objeto y `X-Content-Type-Options: nosniff`.
 
-Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes presentes en el documento quedan asociadas a él; las que se han quitado se eliminan de R2 y D1. Una imagen pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus imágenes, y al eliminar un blog sin artículos se limpian las que hayan quedado sin asignar.
+Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes presentes en el documento y la portada quedan asociadas a él; las que se han quitado se eliminan de R2 y D1. Una imagen pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus imágenes, incluida la portada, y al eliminar un blog sin artículos se limpian las que hayan quedado sin asignar.
 
 ### Estadísticas
 
@@ -297,7 +300,7 @@ No usa cookies. Solo devuelve blogs activos y artículos en estado `published` o
 | ------ | ------------------------------------------------------ | ---------------------------------- |
 | `GET`  | `/api/public/v1/blogs/:blogSlug`                       | Metadatos del blog                 |
 | `GET`  | `/api/public/v1/blogs/:blogSlug/articles`              | Lista visible, paginada por cursor |
-| `GET`  | `/api/public/v1/blogs/:blogSlug/articles/:articleSlug` | Detalle con `body` en HTML         |
+| `GET`  | `/api/public/v1/blogs/:blogSlug/articles/:articleSlug` | Detalle con `body` en HTML y `coverImage` |
 
 Query params de la lista:
 
@@ -321,6 +324,7 @@ Respuesta:
       "title": "Cómo empezar",
       "slug": "como-empezar",
       "excerpt": "Una introducción breve.",
+      "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
       "author": "Daniel",
       "status": "featured",
       "createdAt": "2026-11-03T10:00:00.000Z",
@@ -343,6 +347,7 @@ Detalle de artículo:
     "title": "Cómo empezar",
     "slug": "como-empezar",
     "excerpt": "Una introducción breve",
+    "coverImage": "https://<worker>.workers.dev/media/<blogId>/<uuid>.webp",
     "author": "Daniel",
     "status": "published",
     "body": "<p>Texto con <span style=\"color: #dc2626; font-family: Lora, Georgia, serif\">estilo</span>.</p>",
@@ -358,7 +363,7 @@ Detalle de artículo:
 }
 ```
 
-El campo `body` ya es HTML seguro generado en el servidor: la web consumidora puede insertarlo directamente sin volver a renderizar markdown.
+El campo `body` ya es HTML seguro generado en el servidor: la web consumidora puede insertarlo directamente sin volver a renderizar markdown. `coverImage` es la miniatura del artículo y puede ser `null`.
 
 ### Fuentes en las webs consumidoras
 

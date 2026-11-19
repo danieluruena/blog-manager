@@ -79,7 +79,8 @@ async function createArticle(
   blogId: string,
   cookie: string,
   bodyJson: string,
-): Promise<{ status: number; data: { id: string } }> {
+  coverImage: string | null = null,
+): Promise<{ status: number; data: { id: string; coverImage: string | null } }> {
   const response = await apiFetch(
     jsonRequest(`/api/admin/blogs/${blogId}/articles`, {
       method: "POST",
@@ -88,6 +89,7 @@ async function createArticle(
         title: "Artículo con imagen",
         author: "Admin",
         bodyJson,
+        coverImage,
         status: "draft",
       },
     }),
@@ -95,7 +97,7 @@ async function createArticle(
 
   return {
     status: response.status,
-    data: ((await response.json()) as { data: { id: string } }).data,
+    data: ((await response.json()) as { data: { id: string; coverImage: string | null } }).data,
   }
 }
 
@@ -103,13 +105,25 @@ function updateArticleRequest(
   blogId: string,
   articleId: string,
   cookie: string,
-  bodyJson: string,
+  input: { bodyJson?: string; coverImage?: string | null },
 ): Request {
   return jsonRequest(`/api/admin/blogs/${blogId}/articles/${articleId}`, {
     method: "PATCH",
     cookie,
-    body: { bodyJson },
+    body: input,
   })
+}
+
+async function fetchArticle(
+  blogId: string,
+  articleId: string,
+  cookie: string,
+): Promise<{ coverImage: string | null }> {
+  const response = await apiFetch(
+    jsonRequest(`/api/admin/blogs/${blogId}/articles/${articleId}`, { cookie }),
+  )
+
+  return ((await response.json()) as { data: { coverImage: string | null } }).data
 }
 
 beforeEach(async () => {
@@ -128,7 +142,9 @@ describe("article media lifecycle", () => {
     expect(await mediaCount(blog.id)).toBe(1)
 
     const updated = await apiFetch(
-      updateArticleRequest(blog.id, created.data.id, cookie, richTextJson("Sin imágenes")),
+      updateArticleRequest(blog.id, created.data.id, cookie, {
+        bodyJson: richTextJson("Sin imágenes"),
+      }),
     )
 
     expect(updated.status).toBe(200)
@@ -152,7 +168,9 @@ describe("article media lifecycle", () => {
     expect(await mediaCount(blog.id)).toBe(2)
 
     const updated = await apiFetch(
-      updateArticleRequest(blog.id, firstArticle.data.id, cookie, richTextJson("Sin imágenes")),
+      updateArticleRequest(blog.id, firstArticle.data.id, cookie, {
+        bodyJson: richTextJson("Sin imágenes"),
+      }),
     )
 
     expect(updated.status).toBe(200)
@@ -183,6 +201,100 @@ describe("article media lifecycle", () => {
     const { blog, cookie } = await setup()
     const image = await uploadImage(blog.id, cookie)
     const created = await createArticle(blog.id, cookie, richTextImageJson(image.url))
+
+    const deleted = await apiFetch(
+      jsonRequest(`/api/admin/blogs/${blog.id}/articles/${created.data.id}`, {
+        method: "DELETE",
+        cookie,
+      }),
+    )
+
+    expect(deleted.status).toBe(204)
+    expect((await apiFetch(new Request(image.url))).status).toBe(404)
+    expect(await mediaCount(blog.id)).toBe(0)
+  })
+
+  it("asigna la portada al guardar y la elimina al quitarla", async () => {
+    const { blog, cookie } = await setup()
+    const image = await uploadImage(blog.id, cookie)
+    const created = await createArticle(
+      blog.id,
+      cookie,
+      richTextJson("Sin imágenes en el cuerpo"),
+      image.url,
+    )
+
+    expect(created.status).toBe(201)
+    expect(created.data.coverImage).toBe(image.url)
+    expect((await apiFetch(new Request(image.url))).status).toBe(200)
+    expect(await mediaCount(blog.id)).toBe(1)
+
+    const updated = await apiFetch(
+      updateArticleRequest(blog.id, created.data.id, cookie, { coverImage: null }),
+    )
+
+    expect(updated.status).toBe(200)
+    expect((await fetchArticle(blog.id, created.data.id, cookie)).coverImage).toBeNull()
+    expect((await apiFetch(new Request(image.url))).status).toBe(404)
+    expect(await mediaCount(blog.id)).toBe(0)
+  })
+
+  it("reemplaza la portada y borra la anterior", async () => {
+    const { blog, cookie } = await setup()
+    const first = await uploadImage(blog.id, cookie)
+    const second = await uploadImage(blog.id, cookie)
+    const created = await createArticle(
+      blog.id,
+      cookie,
+      richTextJson("Sin imágenes en el cuerpo"),
+      first.url,
+    )
+
+    expect(created.status).toBe(201)
+
+    const updated = await apiFetch(
+      updateArticleRequest(blog.id, created.data.id, cookie, { coverImage: second.url }),
+    )
+
+    expect(updated.status).toBe(200)
+    expect((await fetchArticle(blog.id, created.data.id, cookie)).coverImage).toBe(second.url)
+    expect((await apiFetch(new Request(first.url))).status).toBe(404)
+    expect((await apiFetch(new Request(second.url))).status).toBe(200)
+    expect(await mediaCount(blog.id)).toBe(1)
+  })
+
+  it("no permite reutilizar como portada una imagen de otro artículo", async () => {
+    const { blog, cookie } = await setup()
+    const image = await uploadImage(blog.id, cookie)
+
+    const first = await createArticle(
+      blog.id,
+      cookie,
+      richTextJson("Sin imágenes en el cuerpo"),
+      image.url,
+    )
+    expect(first.status).toBe(201)
+
+    const second = await createArticle(
+      blog.id,
+      cookie,
+      richTextJson("Sin imágenes en el cuerpo"),
+      image.url,
+    )
+
+    expect(second.status).toBe(409)
+    expect((await apiFetch(new Request(image.url))).status).toBe(200)
+  })
+
+  it("borra la portada al eliminar el artículo", async () => {
+    const { blog, cookie } = await setup()
+    const image = await uploadImage(blog.id, cookie)
+    const created = await createArticle(
+      blog.id,
+      cookie,
+      richTextJson("Sin imágenes en el cuerpo"),
+      image.url,
+    )
 
     const deleted = await apiFetch(
       jsonRequest(`/api/admin/blogs/${blog.id}/articles/${created.data.id}`, {

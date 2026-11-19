@@ -106,6 +106,13 @@ npm run articles:convert
 el markdown antiguo con `marked` + `generateJSON` de Tiptap y regenera el HTML con
 el renderizador del servidor. Es idempotente: los ya convertidos se omiten.
 
+### Migración 0003 — `cover_image`
+
+`0003_article_cover_image.sql` añade `articles.cover_image` (`NULL` por defecto).
+No requiere conversión: las portadas se suben desde el formulario y se asocian
+al artículo al guardar. Al reemplazar o quitar una portada, su objeto de R2 y su
+fila de `media` se eliminan.
+
 ## Copias de seguridad
 
 ### D1
@@ -144,7 +151,7 @@ También puedes descargar objetos concretos con `npx wrangler r2 object get`.
 El dump desactiva/defiere claves foráneas y crea las tablas en un orden que no
 respeta dependencias, así que al restaurar con SQLite directamente hay que abrir
 la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
-(`node:sqlite`): 2 usuarios, 3 blogs, 8 artículos, 2 medios y 3 migraciones.
+(`node:sqlite`): 2 usuarios, 3 blogs, 8 artículos, 2 medios y 4 migraciones.
 
 ## Recuperación de acceso
 

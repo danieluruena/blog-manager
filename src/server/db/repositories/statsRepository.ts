@@ -78,6 +78,7 @@ export async function getRecentArticles(db: Database, limit = 5): Promise<Recent
       title: articles.title,
       slug: articles.slug,
       excerpt: articles.excerpt,
+      coverImage: articles.coverImage,
       author: articles.author,
       status: articles.status,
       createdAt: articles.createdAt,

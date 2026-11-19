@@ -9,12 +9,12 @@ Chunks principales:
 
 | Chunk                          | Tamaño    | Gzip      | Cuándo se carga            |
 | ------------------------------ | --------- | --------- | -------------------------- |
-| `use-articles-*.js`            | 404.80 kB | 127.46 kB | Rutas de artículos y editor |
-| `index-*.js`                   | 296.07 kB | 93.86 kB  | Entrada de la SPA          |
+| `use-articles-*.js`            | 405.29 kB | 127.78 kB | Rutas de artículos y editor |
+| `index-*.js`                   | 296.07 kB | 93.87 kB  | Entrada de la SPA          |
 | `api-*.js`                     | 112.88 kB | 36.49 kB  | Cliente HTTP compartido    |
 | `schemas-*.js`                 | 85.18 kB  | 24.56 kB  | Validación compartida      |
 | `form-*.js`                    | 45.48 kB  | 15.64 kB  | Formularios                |
-| `tiptap-editor-*.js`           | 48.89 kB  | 15.70 kB  | Solo al abrir el editor    |
+| `tiptap-editor-*.js`           | 48.57 kB  | 15.59 kB  | Solo al abrir el editor    |
 
 Notas:
 

@@ -84,6 +84,7 @@ export const articles = sqliteTable(
     author: text("author").notNull(),
     body: text("body").notNull().default(""),
     bodyJson: text("body_json"),
+    coverImage: text("cover_image"),
     status: text("status", { enum: articleStatusValues }).notNull().default("draft"),
     createdAt: text("created_at").notNull(),
     publishedAt: text("published_at"),

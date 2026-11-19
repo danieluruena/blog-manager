@@ -73,6 +73,7 @@ export type ArticleSummaryDto = {
   title: string
   slug: string
   excerpt: string
+  coverImage: string | null
   author: string
   status: ArticleStatus
   createdAt: string

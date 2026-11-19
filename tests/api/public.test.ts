@@ -23,6 +23,7 @@ async function setupPublicData() {
     title: "Publicado",
     slug: "publicado",
     status: "published",
+    coverImage: "https://media.example.com/portada.webp",
     publishedAt: "2026-11-10T10:00:00.000Z",
   })
   const featured = await createTestArticle(blog.id, {
@@ -143,10 +144,11 @@ describe("public API", () => {
     expect(detail.status).toBe(200)
 
     const body = (await detail.json()) as {
-      data: { body: string; blog: { slug: string } }
+      data: { body: string; coverImage: string | null; blog: { slug: string } }
     }
 
     expect(body.data.body).toContain("<p>Cuerpo del artículo</p>")
+    expect(body.data.coverImage).toBe("https://media.example.com/portada.webp")
     expect(body.data.blog.slug).toBe("pagina-a")
 
     for (const slug of ["borrador", "oculto", "otro-articulo"]) {

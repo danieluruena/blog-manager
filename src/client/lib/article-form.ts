@@ -34,6 +34,7 @@ export const articleFormSchema = z.object({
     .string()
     .min(1, "El contenido es obligatorio")
     .max(1_000_000, "El contenido es demasiado largo"),
+  coverImage: z.string().max(2048, "La URL de la portada es demasiado larga").nullable(),
 })
 
 export type ArticleFormValues = z.infer<typeof articleFormSchema>
@@ -50,6 +51,7 @@ export function toFormValues(
     status: article?.status ?? "draft",
     publishedAt: toDateTimeLocal(article?.publishedAt),
     bodyJson: article?.bodyJson ?? EMPTY_RICH_TEXT_JSON,
+    coverImage: article?.coverImage ?? null,
   }
 }
 
@@ -60,6 +62,7 @@ export function toInput(values: ArticleFormValues, status: ArticleStatus): Artic
     excerpt: values.excerpt,
     author: values.author,
     bodyJson: values.bodyJson,
+    coverImage: values.coverImage,
     status,
     publishedAt: fromDateTimeLocal(values.publishedAt),
   }
