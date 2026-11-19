@@ -197,7 +197,8 @@ la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
 ### Limitaciones conocidas
 
 - Las fuentes se cargan desde Google Fonts; la CSP lo permite explícitamente. El
-  editor ofrece Inter, Roboto, Montserrat, Lora, Merriweather y Playfair Display.
+  editor ofrece un catálogo de 106 familias populares con buscador y carga cada
+  una bajo demanda.
 - La CSP usa `style-src 'unsafe-inline'` porque Radix y otros componentes usan
   atributos `style`. Los scripts no admiten `unsafe-inline` en producción.
 - No hay CLI de reseteo de contraseña (ver procedimiento arriba).

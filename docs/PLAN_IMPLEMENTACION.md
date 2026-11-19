@@ -532,7 +532,7 @@ Sustituir el editor markdown por un editor rich text que permita fuentes, tamañ
 - **Persistencia:** `body_json` guarda el documento JSON (fuente de verdad) y `body` guarda el HTML generado.
 - **API:** la entrada usa `bodyJson`; la salida pública mantiene `body`, ahora en HTML. No había consumidores, así que el cambio de contrato no requiere compatibilidad dual.
 - **Renderizado:** lista blanca propia sin DOM (`src/server/lib/richtext.ts`). Se descartó `generateHTML` de Tiptap porque depende de `happy-dom` y no funciona en Workers.
-- **Fuentes:** Google Fonts curadas con fallbacks locales. Las webs consumidoras deben cargarlas.
+- **Fuentes:** catálogo de 106 Google Fonts populares con buscador y carga bajo demanda, con fallbacks locales.
 - **Tablas:** descartadas. `TableKit` provocaba `RangeError: Duplicate use of selection JSON ID cell` al cargar en Workers y no eran un requisito.
 
 ### Tareas

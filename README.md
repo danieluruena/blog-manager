@@ -159,7 +159,7 @@ Rutas principales:
 
 El editor de artículos usa **Tiptap** con carga diferida. Guarda el documento JSON en `body_json` y el servidor genera el HTML que sirve la API pública. Permite familias tipográficas, tamaños, colores, resaltado, alineación, enlaces, imágenes, listas, citas y código. Las imágenes se previsualizan en local y se suben a R2 al guardar el artículo.
 
-El editor ofrece Google Fonts curadas (Inter, Roboto, Montserrat, Lora, Merriweather y Playfair Display). Las webs que consuman los artículos deben cargar esas fuentes; el HTML incluye alternativas locales como fallback. Hay un ejemplo de `<link>` en [`docs/API.md`](docs/API.md#fuentes-en-las-webs-consumidoras).
+El editor ofrece un catálogo de **106 Google Fonts populares** con buscador, agrupadas en sans, serif, display, mono y manuscritas, además de alternativas del sistema. Las fuentes se cargan bajo demanda: solo se descarga la que se usa o se previsualiza.
 
 ## API
 

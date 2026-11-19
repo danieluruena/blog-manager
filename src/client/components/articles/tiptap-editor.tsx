@@ -29,7 +29,13 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import { countWords } from "../../lib/text"
-import { FONT_FAMILIES, FONT_SIZES, HIGHLIGHT_COLORS, TEXT_COLORS } from "../../lib/editor-options"
+import {
+  DEFAULT_FONT_VALUE,
+  FONT_SIZES,
+  HIGHLIGHT_COLORS,
+  TEXT_COLORS,
+} from "../../lib/editor-options"
+import { loadFontsFromRichText, loadGoogleFont } from "../../lib/font-loading"
 import { Button } from "../ui/button"
 import {
   Dialog,
@@ -48,6 +54,7 @@ import {
 } from "../ui/dropdown-menu"
 import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { FontPicker } from "./font-picker"
 
 type TiptapEditorProps = {
   initialJson: string | null
@@ -155,6 +162,20 @@ export function TiptapEditor({
     }
   }
 
+  function loadFontsFromHtml(html: string | undefined): void {
+    if (!html) {
+      return
+    }
+
+    for (const match of html.matchAll(/font-family\s*:\s*([^;]+)/gi)) {
+      const family = match[1]?.trim()
+
+      if (family) {
+        loadGoogleFont(family)
+      }
+    }
+  }
+
   function handleFiles(
     files: FileList | null | undefined,
     event: ClipboardEvent | DragEvent,
@@ -186,10 +207,15 @@ export function TiptapEditor({
         "aria-label": "Contenido del artículo",
         "aria-multiline": "true",
       },
-      handlePaste: (_view, event) => handleFiles(event.clipboardData?.files, event),
+      handlePaste: (_view, event) => {
+        loadFontsFromHtml(event.clipboardData?.getData("text/html"))
+        return handleFiles(event.clipboardData?.files, event)
+      },
       handleDrop: (_view, event) => handleFiles(event.dataTransfer?.files, event),
     },
     onCreate: ({ editor: current }) => {
+      loadFontsFromRichText(JSON.stringify(current.getJSON()))
+
       if (!initialJson && initialHtml.trim()) {
         onChangeRef.current(JSON.stringify(current.getJSON()))
       }
@@ -317,31 +343,17 @@ export function TiptapEditor({
             </SelectContent>
           </Select>
 
-          <Select
-            value={state?.fontFamily ?? "default"}
-            onValueChange={(value) => {
-              if (value === "default") {
+          <FontPicker
+            value={state?.fontFamily ?? DEFAULT_FONT_VALUE}
+            disabled={disabled}
+            onChange={(family) => {
+              if (!family) {
                 chain()?.unsetFontFamily().run()
               } else {
-                chain()?.setFontFamily(value).run()
+                chain()?.setFontFamily(family).run()
               }
             }}
-          >
-            <SelectTrigger className="h-8 w-[170px]" aria-label="Familia tipográfica">
-              <SelectValue placeholder="Fuente" />
-            </SelectTrigger>
-            <SelectContent>
-              {FONT_FAMILIES.map((font) => (
-                <SelectItem
-                  key={font.value}
-                  value={font.value}
-                  style={{ fontFamily: font.value === "default" ? undefined : font.value }}
-                >
-                  {font.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
 
           <Select
             value={state?.fontSize || "default"}

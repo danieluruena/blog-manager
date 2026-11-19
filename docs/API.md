@@ -362,7 +362,7 @@ El campo `body` ya es HTML seguro generado en el servidor: la web consumidora pu
 
 ### Fuentes en las webs consumidoras
 
-El editor permite aplicar familias de Google Fonts (Inter, Roboto, Montserrat, Lora, Merriweather y Playfair Display). El HTML guarda el nombre de la familia con alternativas locales (`Lora, Georgia, serif`), pero la web consumidora debe cargar la fuente para que se vea exactamente igual que en el editor. Por ejemplo, en el `<head>`:
+El editor permite aplicar un catálogo de 106 familias populares de Google Fonts (sans, serif, display, mono y manuscritas) con buscador, además de fuentes del sistema. El HTML guarda el nombre de la familia con alternativas locales (`Lora, Georgia, serif`), pero la web consumidora debe cargar la fuente para que se vea exactamente igual que en el editor. Por ejemplo, en el `<head>`:
 
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com" />
