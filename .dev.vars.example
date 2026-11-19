@@ -1,0 +1,4 @@
+# Copia este archivo a .dev.vars para desarrollo local.
+# Genera un pepper con:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+AUTH_PEPPER=change-me
