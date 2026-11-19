@@ -10,7 +10,7 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 7 — Hardening y calidad.** La aplicación está completa y endurecida: seguridad, cabeceras, accesibilidad, tests y documentación operativa. Queda el despliegue a producción (Fase 8), pendiente de `wrangler login`.
+**Fase 8 — Despliegue.** La aplicación está publicada en `https://blog-manager.dennis14756.workers.dev` y los cambios se despliegan automáticamente al hacer merge a `main`.
 
 Documentación:
 
@@ -210,6 +210,12 @@ Cada pull request ejecuta automáticamente:
 5. `npm run build`
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+Al hacer merge a `main`, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+aplica las migraciones de D1 y despliega el Worker. Requiere los secretos
+`CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` en el entorno `production` de
+GitHub. Las migraciones también se pueden lanzar a mano con
+[`.github/workflows/migrate.yml`](.github/workflows/migrate.yml).
 
 ## Scripts
 

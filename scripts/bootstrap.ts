@@ -56,11 +56,7 @@ function listD1Databases(): D1Record[] {
   }
 
   try {
-    const databases = normalizeD1List(JSON.parse(result.stdout))
-
-    if (databases.length > 0) {
-      return databases
-    }
+    return normalizeD1List(JSON.parse(result.stdout))
   } catch {
     // Se intenta el fallback de texto.
   }
