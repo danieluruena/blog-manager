@@ -115,7 +115,7 @@ export function DashboardPage() {
             : null}
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      <section>
         <Card className="border-line bg-surface">
           <CardHeader className="flex flex-row items-center justify-between gap-4 px-5">
             <div>
@@ -144,7 +144,7 @@ export function DashboardPage() {
                   <Link
                     key={article.id}
                     to={`/blogs/${article.blogId}/articles/${article.id}`}
-                    className="flex items-center gap-4 py-3 transition-colors first:pt-0 last:pb-0 hover:text-ink"
+                    className="flex min-w-0 items-center gap-4 py-3 transition-colors first:pt-0 last:pb-0 hover:text-ink"
                   >
                     <div className="relative aspect-video w-12 shrink-0 overflow-hidden rounded border border-line bg-surface-2">
                       {article.coverImage ? (
@@ -161,7 +161,9 @@ export function DashboardPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-ink">{article.title}</p>
+                      <p className="line-clamp-2 text-sm leading-snug font-medium text-ink">
+                        {article.title}
+                      </p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {article.blogName} · {formatDate(article.updatedAt)}
                       </p>
@@ -177,59 +179,6 @@ export function DashboardPage() {
                 description="Cuando crees blogs y artículos, los últimos cambios aparecerán aquí."
               />
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-line bg-surface">
-          <CardHeader className="px-5">
-            <CardTitle className="text-base">Siguiente paso</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">
-              La aplicación está lista. Queda el despliegue a producción.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-3 px-5">
-            <div className="rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-success">
-                Fase 5 · Completada
-              </p>
-              <p className="mt-2 text-sm font-medium text-ink">Editor de artículos</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Rich text, fuentes, estados editoriales, fechas y publicación.
-              </p>
-            </div>
-            <div className="rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-success">
-                Fase 6 · Completada
-              </p>
-              <p className="mt-2 text-sm font-medium text-ink">Imágenes en R2</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Pegar o arrastrar imágenes, con caché inmutable y limpieza al borrar.
-              </p>
-            </div>
-            <div className="rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-success">
-                Fase 7 · Completada
-              </p>
-              <p className="mt-2 text-sm font-medium text-ink">Hardening y calidad</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Seguridad, accesibilidad, tests y documentación operativa.
-              </p>
-            </div>
-            <div className="rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Fase 8
-              </p>
-              <p className="mt-2 text-sm font-medium text-ink">Despliegue</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Recursos remotos, migraciones, CI/CD y smoke test en producción.
-              </p>
-            </div>
-            <Button className="w-full" variant="outline" asChild>
-              <Link to="/blogs">
-                Explorar blogs
-                <ArrowUpRight className="size-3.5" />
-              </Link>
-            </Button>
           </CardContent>
         </Card>
       </section>
