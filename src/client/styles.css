@@ -19,14 +19,14 @@
   --color-popover: #14171b;
   --color-popover-foreground: #eceef1;
   --color-primary: #6d8cff;
-  --color-primary-foreground: #ffffff;
+  --color-primary-foreground: #0b0e14;
   --color-secondary: #14171b;
   --color-secondary-foreground: #eceef1;
   --color-muted: #14171b;
   --color-muted-foreground: #9aa0aa;
   --color-accent: #1a1d24;
   --color-accent-foreground: #eceef1;
-  --color-destructive: #f87171;
+  --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;
   --color-border: #23272e;
   --color-input: #23272e;
@@ -63,7 +63,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
   }
 
@@ -370,4 +370,9 @@
 .blog-editor [class*="_dialogContent_"] progress {
   width: 100%;
   accent-color: var(--color-brand);
+}
+
+/* Placeholder legible en el selector de estilo del editor */
+.blog-editor [class*="_selectTrigger_"][data-placeholder] > span:first-child {
+  color: var(--color-muted-foreground);
 }

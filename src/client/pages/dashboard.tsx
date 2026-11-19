@@ -170,7 +170,7 @@ export function DashboardPage() {
           <CardHeader className="px-5">
             <CardTitle className="text-base">Siguiente paso</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Las imágenes ya están integradas. Ahora toca el hardening final.
+              La aplicación está lista. Queda el despliegue a producción.
             </p>
           </CardHeader>
           <CardContent className="space-y-3 px-5">
@@ -193,12 +193,21 @@ export function DashboardPage() {
               </p>
             </div>
             <div className="rounded-xl border border-line bg-surface-2/60 p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Fase 7
+              <p className="font-mono text-[10px] uppercase tracking-widest text-success">
+                Fase 7 · Completada
               </p>
               <p className="mt-2 text-sm font-medium text-ink">Hardening y calidad</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Seguridad, accesibilidad, rendimiento y cobertura de tests.
+                Seguridad, accesibilidad, tests y documentación operativa.
+              </p>
+            </div>
+            <div className="rounded-xl border border-line bg-surface-2/60 p-4">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Fase 8
+              </p>
+              <p className="mt-2 text-sm font-medium text-ink">Despliegue</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Recursos remotos, migraciones, CI/CD y smoke test en producción.
               </p>
             </div>
             <Button className="w-full" variant="outline" asChild>

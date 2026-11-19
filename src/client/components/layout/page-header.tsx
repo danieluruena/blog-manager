@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { useEffect } from "react"
 
 export function PageHeader({
   eyebrow,
@@ -11,6 +12,10 @@ export function PageHeader({
   description?: string
   actions?: ReactNode
 }) {
+  useEffect(() => {
+    document.title = `${title} · Blog Manager`
+  }, [title])
+
   return (
     <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="max-w-2xl">

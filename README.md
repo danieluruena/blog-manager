@@ -10,13 +10,15 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 6 — Imágenes en R2.** La SPA, el Worker, la API HTTP, el login, el shell responsive, el panel, el CRUD de blogs, el editor de artículos y la subida de imágenes a R2 están listos.
+**Fase 7 — Hardening y calidad.** La aplicación está completa y endurecida: seguridad, cabeceras, accesibilidad, tests y documentación operativa. Queda el despliegue a producción (Fase 8), pendiente de `wrangler login`.
 
 Documentación:
 
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
 - [`docs/PLAN_IMPLEMENTACION.md`](docs/PLAN_IMPLEMENTACION.md)
 - [`docs/API.md`](docs/API.md) — endpoints, auth, CORS y ejemplos.
+- [`docs/OPERACIONES.md`](docs/OPERACIONES.md) — deploy, backups, migraciones e incidentes.
+- [`docs/RENDIMIENTO.md`](docs/RENDIMIENTO.md) — bundle y planes de consulta.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — flujo GitFlow.
 
 ## Requisitos
@@ -106,7 +108,7 @@ npm run db:seed
 
 ### Imágenes en R2
 
-- Formatos: JPEG, PNG, WebP, GIF y AVIF. Tamaño máximo: 5 MB.
+- El navegador optimiza cada imagen antes de subirla: la convierte a **WebP**, limita el lado mayor a **2560 px** y usa calidad **0.75**. Se aceptan como origen JPEG, PNG, WebP y AVIF de hasta 20 MB (sin GIF animado); el WebP final no puede superar 5 MB.
 - Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el markdown.
 - Cada imagen pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de una imagen de otro artículo.
 - Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes).
@@ -193,15 +195,21 @@ npm run check      # typecheck + lint + tests + build
 npm run format     # Prettier sobre el código
 ```
 
+La suite incluye 77 tests de integración y unitarios. La interfaz se auditó con
+axe (WCAG 2 A/AA) en login, panel, blogs, artículos y editor sin violaciones
+detectadas.
+
 ## CI
 
 Cada pull request ejecuta automáticamente:
 
 1. `npm ci`
-2. `npm run lint`
-3. `npm run build`
+2. `npm run format:check`
+3. `npm run lint`
+4. `npm run test`
+5. `npm run build`
 
-Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Los tests todavía no forman parte del pipeline; se añadirán más adelante.
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## Scripts
 

@@ -25,6 +25,7 @@ import {
   UndoRedo,
 } from "@mdxeditor/editor"
 import type { Translation } from "@mdxeditor/editor"
+import { useEffect, useRef } from "react"
 import "@mdxeditor/editor/style.css"
 
 const editorTranslations: Record<string, string> = {
@@ -66,62 +67,92 @@ export type MdxEditorProps = {
 }
 
 export function MdxEditor({ markdown, onChange, onUploadImage, readOnly }: MdxEditorProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const applyLabel = () => {
+      const editable = containerRef.current?.querySelector('[contenteditable="true"]')
+
+      if (editable && editable.getAttribute("aria-label") !== "Contenido del artículo") {
+        editable.setAttribute("aria-label", "Contenido del artículo")
+        editable.setAttribute("aria-multiline", "true")
+      }
+    }
+
+    applyLabel()
+
+    const observer = new MutationObserver(applyLabel)
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["aria-label"],
+      })
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <MDXEditor
-      markdown={markdown}
-      onChange={onChange}
-      readOnly={readOnly}
-      placeholder="Escribe el contenido del artículo en markdown…"
-      className="blog-editor dark-theme dark-editor"
-      contentEditableClassName="blog-editor-content"
-      translation={translateEditor}
-      plugins={[
-        headingsPlugin(),
-        listsPlugin(),
-        quotePlugin(),
-        thematicBreakPlugin(),
-        markdownShortcutPlugin(),
-        linkPlugin(),
-        linkDialogPlugin(),
-        imagePlugin({ imageUploadHandler: onUploadImage ?? null }),
-        tablePlugin(),
-        codeBlockPlugin({ defaultCodeBlockLanguage: "text" }),
-        codeMirrorPlugin({
-          codeBlockLanguages: {
-            text: "Texto",
-            bash: "Bash",
-            css: "CSS",
-            html: "HTML",
-            js: "JavaScript",
-            jsx: "JSX",
-            json: "JSON",
-            md: "Markdown",
-            sql: "SQL",
-            ts: "TypeScript",
-            tsx: "TSX",
-          },
-        }),
-        toolbarPlugin({
-          toolbarContents: () => (
-            <>
-              <UndoRedo />
-              <Separator />
-              <BlockTypeSelect />
-              <BoldItalicUnderlineToggles />
-              <Separator />
-              <ListsToggle />
-              <Separator />
-              <CreateLink />
-              <InsertImage />
-              <InsertTable />
-              <InsertThematicBreak />
-              <Separator />
-              <CodeToggle />
-              <InsertCodeBlock />
-            </>
-          ),
-        }),
-      ]}
-    />
+    <div ref={containerRef}>
+      <MDXEditor
+        markdown={markdown}
+        onChange={onChange}
+        readOnly={readOnly}
+        placeholder="Escribe el contenido del artículo en markdown…"
+        className="blog-editor dark-theme dark-editor"
+        contentEditableClassName="blog-editor-content"
+        translation={translateEditor}
+        plugins={[
+          headingsPlugin(),
+          listsPlugin(),
+          quotePlugin(),
+          thematicBreakPlugin(),
+          markdownShortcutPlugin(),
+          linkPlugin(),
+          linkDialogPlugin(),
+          imagePlugin({ imageUploadHandler: onUploadImage ?? null }),
+          tablePlugin(),
+          codeBlockPlugin({ defaultCodeBlockLanguage: "text" }),
+          codeMirrorPlugin({
+            codeBlockLanguages: {
+              text: "Texto",
+              bash: "Bash",
+              css: "CSS",
+              html: "HTML",
+              js: "JavaScript",
+              jsx: "JSX",
+              json: "JSON",
+              md: "Markdown",
+              sql: "SQL",
+              ts: "TypeScript",
+              tsx: "TSX",
+            },
+          }),
+          toolbarPlugin({
+            toolbarContents: () => (
+              <>
+                <UndoRedo />
+                <Separator />
+                <BlockTypeSelect />
+                <BoldItalicUnderlineToggles />
+                <Separator />
+                <ListsToggle />
+                <Separator />
+                <CreateLink />
+                <InsertImage />
+                <InsertTable />
+                <InsertThematicBreak />
+                <Separator />
+                <CodeToggle />
+                <InsertCodeBlock />
+              </>
+            ),
+          }),
+        ]}
+      />
+    </div>
   )
 }

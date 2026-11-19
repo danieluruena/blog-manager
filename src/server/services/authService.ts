@@ -22,6 +22,10 @@ import { generateSessionToken, hashSessionToken } from "../lib/session"
 
 const SESSION_DAYS = 7
 
+// Hash de relleno para igualar el tiempo de respuesta cuando el usuario no existe.
+const DUMMY_PASSWORD_HASH =
+  "hmac-sha256$1$00000000000000000000000000000000$0000000000000000000000000000000000000000000000000000000000000000"
+
 function assertPepper(pepper: string): void {
   if (!pepper || pepper.length < 32) {
     throw new ApiError(
@@ -62,6 +66,7 @@ export async function login(
   const user = await findUserByEmail(db, email)
 
   if (!user || !user.isActive) {
+    await verifyPassword(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH, pepper)
     await registerFailedAttempt(db, keys)
     throw new ApiError(401, "INVALID_CREDENTIALS", "Credenciales inválidas")
   }

@@ -1,10 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  articleStatusValues,
-  imageMimeTypeValues,
-  maxImageBytes,
-  type ArticleStatus,
-} from "@shared/constants"
+import { articleStatusValues, type ArticleStatus } from "@shared/constants"
 import type { ArticleDto, BlogDto } from "@shared/types"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, EyeOff, Loader2, Save, Send, Trash2 } from "lucide-react"
@@ -22,7 +17,8 @@ import {
   type ArticleFormValues,
 } from "../../lib/article-form"
 import { nowDateTimeLocal } from "../../lib/datetime"
-import { formatDateTime } from "../../lib/format"
+import { formatDateTime, formatImageSize } from "../../lib/format"
+import { optimizeImage } from "../../lib/image-optimization"
 import { extractBlobImageUrls, replaceBlobImageUrls } from "../../lib/pending-images"
 import { countWords } from "../../lib/text"
 import { PageHeader } from "../layout/page-header"
@@ -65,9 +61,6 @@ const statusDescriptions: Record<ArticleStatus, string> = {
   hidden: "Oculto en la API pública, pero conserva su fecha de publicación.",
   featured: "Visible en la API pública y marcado como destacado.",
 }
-
-const MAX_IMAGE_BYTES = maxImageBytes
-const allowedImageTypes = new Set<string>(imageMimeTypeValues)
 
 type SavePayload = {
   values: ArticleFormValues
@@ -222,20 +215,29 @@ export function ArticleForm({
   }
 
   async function stageImage(file: File): Promise<string> {
-    if (!allowedImageTypes.has(file.type)) {
-      toast.error("Formato no permitido. Usa JPEG, PNG, WebP, GIF o AVIF.")
-      throw new Error("Formato de imagen no permitido")
+    const toastId = toast.loading("Optimizando imagen…")
+
+    try {
+      const optimized = await optimizeImage(file)
+      const blobUrl = URL.createObjectURL(optimized.file)
+
+      pendingImagesRef.current.set(blobUrl, optimized.file)
+
+      toast.success("Imagen optimizada a WebP", {
+        id: toastId,
+        description: `${formatImageSize(optimized.originalSize)} → ${formatImageSize(optimized.optimizedSize)}`,
+      })
+
+      return blobUrl
+    } catch (optimizationError) {
+      toast.error(
+        optimizationError instanceof Error
+          ? optimizationError.message
+          : "No se pudo optimizar la imagen",
+        { id: toastId },
+      )
+      throw optimizationError
     }
-
-    if (file.size > MAX_IMAGE_BYTES) {
-      toast.error("La imagen no puede superar los 5 MB.")
-      throw new Error("La imagen es demasiado grande")
-    }
-
-    const blobUrl = URL.createObjectURL(file)
-    pendingImagesRef.current.set(blobUrl, file)
-
-    return blobUrl
   }
 
   async function resolvePendingImages(markdown: string): Promise<string> {

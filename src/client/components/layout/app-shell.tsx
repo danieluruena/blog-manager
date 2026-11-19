@@ -104,6 +104,12 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:border focus:border-brand/40 focus:bg-surface-2 focus:px-4 focus:py-2 focus:text-sm focus:text-ink focus:shadow-lg"
+      >
+        Saltar al contenido
+      </a>
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
         <aside className="hidden h-screen w-[264px] shrink-0 border-r border-line bg-surface/40 lg:sticky lg:top-0 lg:flex lg:flex-col">
           <SidebarContent
@@ -165,7 +171,7 @@ export function AppShell() {
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
+          <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
             <div className="mx-auto w-full max-w-6xl">
               <Outlet />
             </div>

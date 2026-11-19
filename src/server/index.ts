@@ -4,6 +4,7 @@ import { Hono } from "hono"
 import { errorResponse } from "./lib/errors"
 import { csrfProtection } from "./middleware/csrf"
 import { requestContext } from "./middleware/requestContext"
+import { securityHeaders } from "./middleware/securityHeaders"
 import { adminRoutes } from "./routes/admin"
 import { authRoutes } from "./routes/auth"
 import { mediaRoutes } from "./routes/media"
@@ -13,6 +14,7 @@ import type { AppEnv } from "./types"
 const app = new Hono<AppEnv>()
 
 app.use("*", requestContext)
+app.use("*", securityHeaders)
 app.use("/api/*", csrfProtection)
 
 app.get("/api/health", (c) => {

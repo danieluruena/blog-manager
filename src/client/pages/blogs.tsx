@@ -120,7 +120,7 @@ export function BlogsPage() {
             value={activeFilter}
             onValueChange={(value) => setActiveFilter(value as ActiveFilter)}
           >
-            <SelectTrigger className="w-full sm:w-[170px]">
+            <SelectTrigger className="w-full sm:w-[170px]" aria-label="Filtrar por estado">
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
