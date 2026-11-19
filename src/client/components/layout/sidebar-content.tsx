@@ -71,7 +71,7 @@ export function SidebarContent({
 
       <Separator className="my-6 bg-line" />
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <nav className="min-h-0 flex-1 overflow-y-auto" aria-label="Tus blogs">
         <div className="mb-3 flex items-center justify-between px-2">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Tus blogs
@@ -106,6 +106,7 @@ export function SidebarContent({
                   key={blog.id}
                   to={`/blogs/${blog.id}/articles`}
                   onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                     active
@@ -128,7 +129,7 @@ export function SidebarContent({
             })}
           </div>
         )}
-      </div>
+      </nav>
 
       <div className="mt-4 border-t border-line pt-4">
         <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-2/60 p-3">
@@ -153,7 +154,7 @@ export function SidebarContent({
         </div>
 
         <div className="mt-3 flex items-center justify-between px-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          <span>Fase 6</span>
+          <span>Fase 7</span>
           <Link to="/blogs" onClick={onNavigate} className="hover:text-ink">
             Ver blogs
           </Link>

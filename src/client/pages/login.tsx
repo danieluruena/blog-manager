@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema, type LoginInput } from "@shared/schemas"
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { Navigate, useLocation, useNavigate } from "react-router"
 
@@ -31,6 +31,10 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [showPassword, setShowPassword] = useState(false)
+
+  useEffect(() => {
+    document.title = "Iniciar sesión · Blog Manager"
+  }, [])
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -92,12 +96,13 @@ export function LoginPage() {
 
           <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             <span className="size-1.5 rounded-full bg-success" />
-            Fase 6 · Imágenes
+            Fase 7 · Hardening
           </div>
         </section>
 
         <section className="mx-auto w-full max-w-md">
           <div className="rounded-2xl border border-line bg-surface/90 p-6 shadow-2xl shadow-black/30 backdrop-blur sm:p-8">
+            <h1 className="sr-only lg:hidden">Iniciar sesión en Blog Manager</h1>
             <div className="mb-8 flex items-center gap-3 lg:hidden">
               <div className="grid size-9 place-items-center rounded-lg border border-line bg-surface-2 font-mono text-xs font-semibold text-brand">
                 BM

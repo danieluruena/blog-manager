@@ -134,6 +134,12 @@ describe("media API", () => {
     const empty = new File([], "empty.png", { type: "image/png" })
     const emptyResponse = await apiFetch(uploadRequest(blog.id, empty, adminCookie))
     expect(emptyResponse.status).toBe(400)
+
+    const svg = new File(['<svg xmlns="http://www.w3.org/2000/svg"></svg>'], "icon.svg", {
+      type: "image/svg+xml",
+    })
+    const svgResponse = await apiFetch(uploadRequest(blog.id, svg, adminCookie))
+    expect(svgResponse.status).toBe(415)
   })
 
   it("rechaza imágenes de más de 5 MB", async () => {

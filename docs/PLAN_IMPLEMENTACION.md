@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. El hardening es la siguiente fase.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. El despliegue es la siguiente fase.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -428,22 +428,22 @@ Cerrar seguridad, rendimiento, accesibilidad y cobertura de tests.
 
 ### Tareas
 
-- [ ] Revisar auth: hashing, cookies, expiración, revocación, rate limiting y errores genéricos.
-- [ ] Revisar CSRF: `SameSite=Strict` + validación de `Origin`.
-- [ ] Revisar CORS: origen de `site_url`, `allowed_origins`, `Vary: Origin`, sin credenciales.
-- [ ] Revisar cabeceras de seguridad y CSP ajustada al build.
-- [ ] Revisar uploads: MIME, tamaño, `nosniff`, SVG.
-- [ ] Tests de integración completos con `@cloudflare/vitest-plugin`.
-- [ ] Test E2E de humo con Playwright (opcional):
-  - [ ] Login → crear blog → crear artículo → subir imagen → publicar → verificar API pública → borrado bloqueado.
-- [ ] Auditoría de accesibilidad: foco, contraste, labels, teclado.
-- [ ] Revisar bundle: editor en chunk separado; sin dependencias de servidor en el cliente.
-- [ ] Medir y documentar `EXPLAIN QUERY PLAN` de las consultas principales.
-- [ ] Configurar observabilidad y logs estructurados.
-- [ ] Configurar backup/export y probar restauración en local.
-- [ ] Revisar checklist de seguridad de Workers (secretos, bindings, sin estado global).
-- [ ] Documentar runbook: deploy, rollback, migraciones, reseteo de admin, incidentes.
-- [ ] Verificar que `workers_dev` es el host esperado y que no hay rutas de administración sin auth.
+- [x] Revisar auth: hashing, cookies, expiración, revocación, rate limiting y errores genéricos.
+- [x] Revisar CSRF: `SameSite=Strict` + validación de `Origin`.
+- [x] Revisar CORS: origen de `site_url`, `allowed_origins`, `Vary: Origin`, sin credenciales.
+- [x] Revisar cabeceras de seguridad y CSP ajustada al build.
+- [x] Revisar uploads: MIME, tamaño, `nosniff`, SVG.
+- [x] Tests de integración completos con `@cloudflare/vitest-plugin` (76 tests).
+- [x] Test E2E de humo con Playwright (verificado manualmente; no en CI):
+  - [x] Login → crear blog → crear artículo → subir imagen → publicar → verificar API pública → borrado bloqueado.
+- [x] Auditoría de accesibilidad: foco, contraste, labels, teclado (axe sin violaciones en 5 pantallas).
+- [x] Revisar bundle: editor en chunk separado; sin dependencias de servidor en el cliente.
+- [x] Medir y documentar `EXPLAIN QUERY PLAN` de las consultas principales.
+- [x] Configurar observabilidad y logs estructurados.
+- [x] Configurar backup/export y probar restauración en local.
+- [x] Revisar checklist de seguridad de Workers (secretos, bindings, sin estado global).
+- [x] Documentar runbook: deploy, rollback, migraciones, reseteo de admin, incidentes.
+- [x] Verificar que `workers_dev` es el host esperado y que no hay rutas de administración sin auth.
 
 ### Criterios de aceptación
 
