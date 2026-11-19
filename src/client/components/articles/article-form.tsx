@@ -20,7 +20,6 @@ import { nowDateTimeLocal } from "../../lib/datetime"
 import { formatDateTime, formatImageSize } from "../../lib/format"
 import { optimizeImage } from "../../lib/image-optimization"
 import { extractBlobImageUrls, replaceBlobImageUrls } from "../../lib/pending-images"
-import { countWords } from "../../lib/text"
 import { PageHeader } from "../layout/page-header"
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
 import { Button } from "../ui/button"
@@ -45,8 +44,10 @@ import {
 import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Textarea } from "../ui/textarea"
+import { ArticlePreview } from "./article-preview"
+import { CoverImageField } from "./cover-image-field"
 import { DeleteArticleDialog } from "./delete-article-dialog"
-import { MarkdownEditor } from "./markdown-editor"
+import { RichTextEditor } from "./rich-text-editor"
 
 const statusLabels: Record<ArticleStatus, string> = {
   draft: "Borrador",
@@ -92,8 +93,9 @@ export function ArticleForm({
   })
 
   const status = useWatch({ control: form.control, name: "status" })
-  const body = useWatch({ control: form.control, name: "body" })
+  const title = useWatch({ control: form.control, name: "title" })
   const excerpt = useWatch({ control: form.control, name: "excerpt" })
+  const coverImage = useWatch({ control: form.control, name: "coverImage" })
   const isDirty = form.formState.isDirty
 
   const mutation = useMutation({
@@ -198,11 +200,16 @@ export function ArticleForm({
 
   async function save(values: ArticleFormValues, nextStatus: ArticleStatus) {
     try {
-      const body = await resolvePendingImages(values.body)
+      const bodyBlobUrls = extractBlobImageUrls(values.bodyJson)
+      const coverBlobUrl = values.coverImage?.startsWith("blob:") ? values.coverImage : null
+      const blobUrls = [...new Set([...bodyBlobUrls, ...(coverBlobUrl ? [coverBlobUrl] : [])])]
+      const replacements = await uploadPendingImages(blobUrls)
+      const bodyJson = replaceBlobImageUrls(values.bodyJson, replacements)
+      const coverImage = coverBlobUrl ? (replacements.get(coverBlobUrl) ?? null) : values.coverImage
 
-      mutation.mutate({ values: { ...values, body }, status: nextStatus })
+      mutation.mutate({ values: { ...values, bodyJson, coverImage }, status: nextStatus })
     } catch {
-      // resolvePendingImages ya muestra el error.
+      // uploadPendingImages ya muestra el error.
     }
   }
 
@@ -240,19 +247,17 @@ export function ArticleForm({
     }
   }
 
-  async function resolvePendingImages(markdown: string): Promise<string> {
-    const blobUrls = extractBlobImageUrls(markdown)
+  async function uploadPendingImages(blobUrls: string[]): Promise<Map<string, string>> {
+    const replacements = new Map<string, string>()
 
     if (blobUrls.length === 0) {
-      return markdown
+      return replacements
     }
 
     setIsUploading(true)
     const toastId = toast.loading(blobUrls.length === 1 ? "Subiendo imagen…" : "Subiendo imágenes…")
 
     try {
-      const replacements = new Map<string, string>()
-
       await Promise.all(
         blobUrls.map(async (blobUrl) => {
           const alreadyUploaded = uploadedImagesRef.current.get(blobUrl)
@@ -279,7 +284,7 @@ export function ArticleForm({
         id: toastId,
       })
 
-      return replaceBlobImageUrls(markdown, replacements)
+      return replacements
     } catch (uploadError) {
       toast.error(
         uploadError instanceof Error ? uploadError.message : "No se pudieron subir las imágenes",
@@ -292,7 +297,6 @@ export function ArticleForm({
   }
 
   const error = mutation.error instanceof ApiError ? mutation.error : null
-  const words = countWords(body)
   const visible = isVisibleStatus(status)
   const isBusy = mutation.isPending || isUploading
 
@@ -357,13 +361,33 @@ export function ArticleForm({
 
                 <FormField
                   control={form.control}
+                  name="coverImage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Portada</FormLabel>
+                      <CoverImageField
+                        value={field.value}
+                        disabled={isBusy}
+                        onChange={field.onChange}
+                        onSelect={stageImage}
+                      />
+                      <FormDescription>
+                        Se muestra junto al título en los listados y en la API pública.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="excerpt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Extracto</FormLabel>
+                      <FormLabel>Descripción</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Resumen corto que se muestra en los listados."
+                          placeholder="Descripción breve que se muestra en los listados."
                           className="min-h-20 resize-y"
                           maxLength={300}
                           {...field}
@@ -377,6 +401,39 @@ export function ArticleForm({
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium leading-none">Vista previa en el listado</p>
+                    <p className="mt-1.5 text-sm text-muted-foreground">
+                      Así se verá la miniatura del artículo en las dos configuraciones más comunes.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                        Portada a la izquierda
+                      </p>
+                      <ArticlePreview
+                        variant="horizontal"
+                        title={title}
+                        description={excerpt}
+                        coverImage={coverImage ?? null}
+                      />
+                    </div>
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                        Portada arriba
+                      </p>
+                      <ArticlePreview
+                        variant="vertical"
+                        title={title}
+                        description={excerpt}
+                        coverImage={coverImage ?? null}
+                      />
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -384,23 +441,15 @@ export function ArticleForm({
               <CardContent className="px-5">
                 <FormField
                   control={form.control}
-                  name="body"
+                  name="bodyJson"
                   render={({ field }) => (
                     <FormItem>
-                      <MarkdownEditor
-                        id="article-body"
-                        value={field.value}
+                      <RichTextEditor
+                        initialJson={article?.bodyJson ?? null}
+                        initialHtml={article?.body ?? ""}
                         onChange={field.onChange}
                         onUploadImage={stageImage}
                       />
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span>
-                          {words} {words === 1 ? "palabra" : "palabras"} · {body.length} caracteres
-                        </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wider">
-                          Ctrl/Cmd + S para guardar
-                        </span>
-                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

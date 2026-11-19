@@ -6,6 +6,7 @@ import {
   toFormValues,
   toInput,
 } from "../../src/client/lib/article-form"
+import { EMPTY_RICH_TEXT_JSON } from "../../src/shared/richtext"
 import type { ArticleDto } from "../../src/shared/types"
 
 const article: ArticleDto = {
@@ -14,9 +15,20 @@ const article: ArticleDto = {
   title: "Artículo de prueba",
   slug: "articulo-de-prueba",
   excerpt: "Un resumen",
+  coverImage: "https://blog-manager.example.com/media/blog/portada.webp",
   author: "Daniel",
   status: "published",
-  body: "# Hola",
+  body: "<h1>Hola</h1>",
+  bodyJson: JSON.stringify({
+    type: "doc",
+    content: [
+      {
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: "Hola" }],
+      },
+    ],
+  }),
   createdAt: "2026-11-18T09:00:00.000Z",
   publishedAt: "2026-11-18T10:00:00.000Z",
   updatedAt: "2026-11-18T11:00:00.000Z",
@@ -31,7 +43,8 @@ describe("article form", () => {
       author: "Admin",
       status: "draft",
       publishedAt: "",
-      body: "",
+      bodyJson: EMPTY_RICH_TEXT_JSON,
+      coverImage: null,
     })
 
     const values = toFormValues(article, "Admin")
@@ -39,6 +52,7 @@ describe("article form", () => {
     expect(values.title).toBe(article.title)
     expect(values.author).toBe(article.author)
     expect(values.status).toBe("published")
+    expect(values.coverImage).toBe(article.coverImage)
     expect(values.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
   })
 
@@ -49,6 +63,7 @@ describe("article form", () => {
     expect(input).not.toHaveProperty("slug")
     expect(input.publishedAt).toBeNull()
     expect(input.status).toBe("draft")
+    expect(input.coverImage).toBeNull()
   })
 
   it("incluye el slug y la fecha cuando están presentes", () => {

@@ -2,7 +2,7 @@
 
 Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios artículos y la API pública está aislada por blog.
 
-- **Frontend:** React + Vite + TypeScript + Tailwind CSS + MDXEditor.
+- **Frontend:** React + Vite + TypeScript + Tailwind CSS + Tiptap.
 - **Backend:** Hono + TypeScript sobre Cloudflare Workers.
 - **Datos:** Cloudflare D1.
 - **Imágenes:** Cloudflare R2.
@@ -109,8 +109,9 @@ npm run db:seed
 ### Imágenes en R2
 
 - El navegador optimiza cada imagen antes de subirla: la convierte a **WebP**, limita el lado mayor a **2560 px** y usa calidad **0.75**. Se aceptan como origen JPEG, PNG, WebP y AVIF de hasta 20 MB (sin GIF animado); el WebP final no puede superar 5 MB.
-- Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el markdown.
-- Cada imagen pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de una imagen de otro artículo.
+- Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el documento.
+- Cada artículo puede tener una **imagen de portada** con previsualización. Usa el mismo pipeline: se optimiza en el navegador y se sube al guardar. Aparece junto al título en el listado y en el campo `coverImage` de la API.
+- Cada imagen pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen o la portada y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de una imagen de otro artículo.
 - Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes).
 - En local los objetos se guardan en `.wrangler/state/v3/r2`; al borrar un artículo o un blog sin artículos se limpian también sus imágenes.
 
@@ -157,7 +158,9 @@ Rutas principales:
 | `/blogs/:blogId/articles/:articleId` | Edición de un artículo                  |
 | `/blogs/:blogId/settings`            | Ajustes del blog                        |
 
-El editor de artículos usa MDXEditor con carga diferida y guarda el contenido en markdown. Las imágenes se previsualizan en local y se suben a R2 al guardar el artículo.
+El editor de artículos usa **Tiptap** con carga diferida. Guarda el documento JSON en `body_json` y el servidor genera el HTML que sirve la API pública. Permite familias tipográficas, tamaños, colores, resaltado, alineación, enlaces, imágenes, listas, citas y código. Las imágenes se previsualizan en local y se suben a R2 al guardar el artículo. El formulario incluye además una portada con previsualización que se muestra junto al título en el listado.
+
+El editor ofrece un catálogo de **106 Google Fonts populares** con buscador, agrupadas en sans, serif, display, mono y manuscritas, además de alternativas del sistema. Las fuentes se cargan bajo demanda: solo se descarga la que se usa o se previsualiza.
 
 ## API
 
@@ -195,7 +198,7 @@ npm run check      # typecheck + lint + tests + build
 npm run format     # Prettier sobre el código
 ```
 
-La suite incluye 77 tests de integración y unitarios. La interfaz se auditó con
+La suite incluye 80 tests de integración y unitarios. La interfaz se auditó con
 axe (WCAG 2 A/AA) en login, panel, blogs, artículos y editor sin violaciones
 detectadas.
 
@@ -219,22 +222,23 @@ GitHub. Las migraciones también se pueden lanzar a mano con
 
 ## Scripts
 
-| Comando               | Descripción                                     |
-| --------------------- | ----------------------------------------------- |
-| `npm run dev`         | Servidor de desarrollo (SPA + Worker).          |
-| `npm run build`       | Typecheck y build de producción.                |
-| `npm run preview`     | Previsualiza el build en el runtime de Workers. |
-| `npm run typecheck`   | TypeScript en modo estricto.                    |
-| `npm run lint`        | ESLint.                                         |
-| `npm run format`      | Prettier.                                       |
-| `npm run test`        | Tests con Vitest dentro del runtime de Workers. |
-| `npm run check`       | Typecheck + lint + tests + build.               |
-| `npm run audit`       | Auditoría de dependencias de producción.        |
-| `npm run cf-typegen`  | Genera `worker-configuration.d.ts`.             |
-| `npm run bootstrap`   | Crea D1 y R2 y actualiza `wrangler.jsonc`.      |
-| `npm run db:seed`     | Carga datos de ejemplo en D1 local.             |
-| `npm run user:create` | Crea un usuario administrador o editor.         |
-| `npm run deploy`      | Build y despliegue a Cloudflare.                |
+| Comando                    | Descripción                                              |
+| -------------------------- | -------------------------------------------------------- |
+| `npm run dev`              | Servidor de desarrollo (SPA + Worker).                   |
+| `npm run build`            | Typecheck y build de producción.                         |
+| `npm run preview`          | Previsualiza el build en el runtime de Workers.          |
+| `npm run typecheck`        | TypeScript en modo estricto.                             |
+| `npm run lint`             | ESLint.                                                  |
+| `npm run format`           | Prettier.                                                |
+| `npm run test`             | Tests con Vitest dentro del runtime de Workers.          |
+| `npm run check`            | Typecheck + lint + tests + build.                        |
+| `npm run audit`            | Auditoría de dependencias de producción.                 |
+| `npm run cf-typegen`       | Genera `worker-configuration.d.ts`.                      |
+| `npm run bootstrap`        | Crea D1 y R2 y actualiza `wrangler.jsonc`.               |
+| `npm run db:seed`          | Carga datos de ejemplo y los convierte a rich text.      |
+| `npm run articles:convert` | Convierte a rich text los artículos locales en markdown. |
+| `npm run user:create`      | Crea un usuario administrador o editor.                  |
+| `npm run deploy`           | Build y despliegue a Cloudflare.                         |
 
 ## Cloudflare remoto
 

@@ -8,6 +8,7 @@ import {
   EyeOff,
   FileText,
   Filter,
+  ImagePlus,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -338,15 +339,33 @@ export function BlogArticlesPage() {
                     return (
                       <TableRow key={article.id} className="border-line">
                         <TableCell className="max-w-md pl-5">
-                          <Link
-                            to={`/blogs/${currentBlog.id}/articles/${article.id}`}
-                            className="block truncate font-medium text-ink transition-colors hover:text-brand"
-                          >
-                            {article.title}
-                          </Link>
-                          <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
-                            /{article.slug}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <div className="relative aspect-video w-16 shrink-0 overflow-hidden rounded-md border border-line bg-surface-2">
+                              {article.coverImage ? (
+                                <img
+                                  src={article.coverImage}
+                                  alt=""
+                                  loading="lazy"
+                                  className="size-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex size-full items-center justify-center text-muted-foreground">
+                                  <ImagePlus className="size-4" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <Link
+                                to={`/blogs/${currentBlog.id}/articles/${article.id}`}
+                                className="block truncate font-medium text-ink transition-colors hover:text-brand"
+                              >
+                                {article.title}
+                              </Link>
+                              <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                                /{article.slug}
+                              </p>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={article.status} />

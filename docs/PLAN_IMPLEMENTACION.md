@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, editor markdown, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. Fase 8 en curso: recursos remotos, secreto, migraciones, despliegue y pipeline listos; faltan el administrador inicial y el smoke test final.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. Fase 8 completada: D1/R2 remotos, secreto, migraciones, despliegue y pipeline. Fase 9 completada: editor rich text con Tiptap, `body_json`, renderizado HTML seguro y conversión de artículos locales. Fase 10 completada: imagen de portada con previsualización, subida diferida y miniatura en el listado.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -13,7 +13,7 @@
 |---|---|
 | Autenticación | Login propio multiusuario (sin Cloudflare Access). |
 | Host | Un único host gratuito `*.workers.dev`. |
-| Imágenes | R2 desde el MVP, con pegar/arrastrar y subida inmediata. |
+| Imágenes | R2 desde el MVP, con pegar/arrastrar y subida diferida al guardar. |
 | Consumo público | Las webs consultan desde el navegador; CORS por blog. |
 | Borrado de blogs | Bloqueado si el blog tiene artículos. |
 | Usuarios | Multiusuario desde el esquema; un administrador inicial. |
@@ -29,10 +29,12 @@
 - Esquema multiusuario (`users`, `sessions`) y roles `admin`/`editor`; en el MVP solo se usa `admin`.
 - CRUD de blogs: nombre, slug, descripción, URL de la página, orígenes CORS y activo/inactivo.
 - Borrado de blog bloqueado si tiene artículos (`409 BLOG_HAS_ARTICLES`).
-- CRUD de artículos por blog: título, slug, descripción corta, autor, fechas, estado y body markdown.
+- CRUD de artículos por blog: título, slug, descripción corta, autor, fechas, estado y contenido rich text.
 - Estados: `draft`, `published`, `hidden`, `featured`.
-- Editor markdown con vista previa.
-- Subida de imágenes a R2 al pegar, arrastrar o seleccionar; inserción automática en markdown.
+- Editor rich text con fuentes, tamaños, colores, resaltado, alineación, enlaces, imágenes, listas, citas y código.
+- Imagen de portada por artículo con previsualización y miniatura en el listado.
+- Persistencia del documento Tiptap en `body_json`; el servidor genera y sirve el HTML de `body`.
+- Subida de imágenes a R2 al pegar, arrastrar o seleccionar; optimización a WebP y subida diferida al guardar.
 - API pública de solo lectura, versionada, aislada por blog y con CORS.
 - Interfaz oscura, responsive y accesible.
 - Base de datos D1 con migraciones.
@@ -66,10 +68,12 @@
 | 2 | Auth, CRUD de blogs/artículos, API pública y CORS | 3–4 días |
 | 3 | Base del frontend, tema oscuro y login | 1–2 días |
 | 4 | UI de blogs, ajustes y panel | 1 día |
-| 5 | UI de artículos y editor markdown | 2–3 días |
+| 5 | UI de artículos y editor rich text | 2–3 días |
 | 6 | Imágenes en R2 con pegar/arrastrar | 1–1,5 días |
 | 7 | Hardening, tests, accesibilidad y rendimiento | 1–2 días |
 | 8 | Despliegue y documentación | 0,5–1 día |
+| 9 | Editor rich text, `body_json` y migración de contenido | 2–3 días |
+| 10 | Imagen de portada y miniatura en el listado | 0,5–1 día |
 
 **Total orientativo:** 11–17 días de trabajo efectivo. El MVP funcional (fases 0–6) se puede tener en 10–14 días; la diferencia depende sobre todo del editor y de las pruebas de auth/CORS.
 
@@ -333,7 +337,9 @@ Gestionar blogs desde la interfaz y ver un panel útil.
 
 ---
 
-## 9. Fase 5 — UI de artículos y editor markdown
+## 9. Fase 5 — UI de artículos y editor
+
+> El editor de esta fase se sustituyó por Tiptap en la Fase 9 (ver §14).
 
 ### Objetivo
 
@@ -350,8 +356,7 @@ Gestionar artículos por blog con un editor cómodo y publicación clara.
 - [x] Editor `/blogs/:blogId/articles/new` y `/:articleId`:
   - [x] Campo título grande.
   - [x] Panel de metadatos: blog (solo lectura), autor, estado, fecha de creación (solo lectura), fecha de publicación, slug.
-  - [x] Editor markdown con toolbar y vista previa (MDXEditor, carga diferida).
-  - [x] Modo “ver markdown”.
+  - [x] Editor WYSIWYG con toolbar (sustituido por Tiptap en la Fase 9).
   - [x] Botones Guardar, Cancelar y Publicar.
   - [x] Aviso de cambios sin guardar (beforeunload + navegación interna).
   - [x] Contador de palabras/caracteres.
@@ -364,13 +369,13 @@ Gestionar artículos por blog con un editor cómodo y publicación clara.
 - [x] Estado vacío: “Este blog todavía no tiene artículos”.
 - [x] Atajo `Ctrl/Cmd + S` para guardar.
 - [ ] Tests de componentes críticos (formulario, editor, toggle de estado). Pendiente: requiere entorno DOM (jsdom/RTL); la lógica de fechas y recuento ya tiene tests unitarios.
-- [x] Vista previa con el modo visual de MDXEditor.
+- [x] Vista previa integrada en el editor visual (sustituida por Tiptap en la Fase 9).
 
 ### Criterios de aceptación
 
 - Se puede crear un artículo, guardarlo como borrador, publicarlo y verlo en la API pública.
-- El body se guarda como markdown y se recupera sin pérdidas.
-- La vista previa refleja el markdown.
+- El body se guarda como rich text y se recupera sin pérdidas.
+- El HTML generado refleja fuentes, colores y alineación.
 - Los cambios sin guardar avisan antes de salir.
 - El editor funciona en móvil (stack vertical).
 
@@ -397,7 +402,7 @@ Subir imágenes desde el editor y servirlas con caché.
   - [x] ETag y `Content-Type` correctos.
   - [x] 404 si no existe.
 - [x] Integrar en el editor:
-  - [x] `imageUploadHandler` de MDXEditor.
+  - [x] Subida desde la toolbar del editor (Tiptap desde la Fase 9).
   - [x] Manejo de `paste` para imágenes del portapapeles.
   - [x] Manejo de `drop` para arrastrar archivos.
   - [x] Previsualización local con `blob:` y subida solo al guardar las imágenes que sigan en el artículo.
@@ -517,7 +522,71 @@ En ese momento, Terraform es la opción madura; Alchemy es interesante si se qui
 
 ---
 
-## 14. Definition of Done (MVP)
+## 14. Fase 9 — Editor rich text y migración de contenido
+
+### Objetivo
+
+Sustituir el editor markdown por un editor rich text que permita fuentes, tamaños, colores y resaltado, sin comprometer la seguridad del HTML servido.
+
+### Decisiones
+
+- **Editor:** Tiptap 3 + ProseMirror, con extensiones compartidas entre cliente y servidor.
+- **Persistencia:** `body_json` guarda el documento JSON (fuente de verdad) y `body` guarda el HTML generado.
+- **API:** la entrada usa `bodyJson`; la salida pública mantiene `body`, ahora en HTML. No había consumidores, así que el cambio de contrato no requiere compatibilidad dual.
+- **Renderizado:** lista blanca propia sin DOM (`src/server/lib/richtext.ts`). Se descartó `generateHTML` de Tiptap porque depende de `happy-dom` y no funciona en Workers.
+- **Fuentes:** catálogo de 106 Google Fonts populares con buscador y carga bajo demanda, con fallbacks locales.
+- **Tablas:** descartadas. `TableKit` provocaba `RangeError: Duplicate use of selection JSON ID cell` al cargar en Workers y no eran un requisito.
+
+### Tareas
+
+- [x] Migración `0002_article_body_json` con la columna `body_json`.
+- [x] Esquema de entrada `bodyJson` y tipos `ArticleDto`/`ArticleFormValues`.
+- [x] Renderizador HTML con lista blanca, validación de estilos y URLs.
+- [x] Editor Tiptap con toolbar, atajos, enlaces, imágenes y contador.
+- [x] Pipeline de imágenes adaptado a nodos `image` y subida diferida.
+- [x] Script `articles:convert` para convertir los artículos locales de markdown a Tiptap/HTML.
+- [x] Tests del renderizador, del formulario y del flujo de imágenes.
+- [x] Documentación de API, arquitectura, operaciones y rendimiento.
+
+### Criterios de aceptación
+
+- Se puede aplicar familia, tamaño, color y resaltado, y persisten al guardar y reeditar.
+- El servidor rechaza nodos, marcas, estilos y URLs no permitidos con `400 INVALID_CONTENT`.
+- La API pública devuelve HTML ya seguro.
+- Los 8 artículos locales quedan migrados y se siguen viendo en la API.
+- `typecheck`, `lint`, `test`, `build`, `format:check` y `audit` pasan.
+
+---
+
+## 15. Fase 10 — Imagen de portada
+
+### Objetivo
+
+Permitir una imagen de portada por artículo, visible junto al título en el listado y en la API pública, reutilizando el pipeline de imágenes existente.
+
+### Tareas
+
+- [x] Migración `0003_article_cover_image` con la columna `cover_image`.
+- [x] Campo `coverImage` en la entrada de la API y en los DTO de resumen y detalle.
+- [x] Campo de portada debajo del título con previsualización, cambio y borrado.
+- [x] Vista previa de la miniatura en dos configuraciones: portada a la izquierda y portada arriba.
+- [x] Optimización a WebP y subida diferida al guardar, junto a las imágenes del contenido.
+- [x] Asociación de la portada al artículo y limpieza de la anterior en R2 y D1.
+- [x] Miniatura en el listado de artículos y exposición en la API pública.
+- [x] Tests de creación, reemplazo, borrado y reutilización indebida.
+- [x] Documentación actualizada.
+
+### Criterios de aceptación
+
+- La portada se previsualiza en local antes de guardar y se sube solo al guardar.
+- Se guarda como WebP en R2 y aparece junto al título en el listado.
+- Reemplazarla o quitarla elimina la imagen anterior de R2 y D1.
+- La API pública devuelve `coverImage` en listado y detalle.
+- `typecheck`, `lint`, `test`, `build`, `format:check` y `audit` pasan.
+
+---
+
+## 16. Definition of Done (MVP)
 
 El MVP se considera terminado cuando:
 
@@ -527,8 +596,8 @@ El MVP se considera terminado cuando:
 - [ ] Un blog con artículos no se puede borrar; la UI lo explica.
 - [ ] Se pueden crear, editar, publicar, ocultar, destacar y borrar artículos.
 - [ ] Cada artículo pertenece a un único blog y la UI/API respetan el aislamiento.
-- [ ] El body es markdown y se previsualiza correctamente.
-- [ ] Se pueden pegar/arrastrar imágenes y se suben a R2.
+- [ ] El body es rich text, se guarda en `body_json` y la API devuelve HTML.
+- [ ] Se pueden pegar/arrastrar imágenes y se suben a R2; cada artículo puede tener una portada con miniatura en el listado.
 - [ ] La API pública devuelve solo artículos visibles del blog solicitado y respeta CORS.
 - [ ] La interfaz es oscura, responsive y usable en móvil.
 - [ ] `typecheck`, `lint`, `test` y `build` pasan.
@@ -537,7 +606,7 @@ El MVP se considera terminado cuando:
 
 ---
 
-## 15. Orden de trabajo recomendado
+## 17. Orden de trabajo recomendado
 
 1. **Fase 0:** esqueleto desplegable con `/api/health` y bootstrap.
 2. **Fase 1:** esquema, repositorios, hashing y CLI de admin, con tests.
@@ -545,6 +614,8 @@ El MVP se considera terminado cuando:
 4. **Fase 3–4:** shell, tema, login y CRUD de blogs.
 5. **Fase 5–6:** artículos, editor e imágenes.
 6. **Fase 7–8:** hardening, despliegue y documentación.
+7. **Fase 9:** editor rich text, migración de contenido y nuevo contrato de la API.
+8. **Fase 10:** imagen de portada y miniatura en el listado.
 
 La razón del orden: el modelo de datos y la API son la fuente de verdad; la UI se construye sobre contratos probados. El aislamiento, el bloqueo de borrado y CORS se validan antes de que exista interfaz, para no arrastrar fallos de diseño.
 
@@ -552,7 +623,7 @@ La razón del orden: el modelo de datos y la API son la fuente de verdad; la UI 
 
 ---
 
-## 16. Primeros comandos propuestos
+## 18. Primeros comandos propuestos
 
 El repositorio ya contiene `docs/`, así que el scaffold se hace en una carpeta temporal y se integra, o se inicializa manualmente:
 

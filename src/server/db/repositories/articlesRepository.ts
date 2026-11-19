@@ -20,6 +20,7 @@ export type ArticleSummary = Pick<
   | "title"
   | "slug"
   | "excerpt"
+  | "coverImage"
   | "author"
   | "status"
   | "createdAt"
@@ -53,6 +54,7 @@ const summaryColumns = {
   title: articles.title,
   slug: articles.slug,
   excerpt: articles.excerpt,
+  coverImage: articles.coverImage,
   author: articles.author,
   status: articles.status,
   createdAt: articles.createdAt,

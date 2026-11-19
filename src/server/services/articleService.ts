@@ -12,6 +12,7 @@ import {
 import { deleteMediaByIds } from "../db/repositories/mediaRepository"
 import { normalizeIso, nowIso } from "../lib/dates"
 import { ApiError } from "../lib/errors"
+import { renderArticleHtml } from "../lib/richtext"
 import { findAvailableSlug, toSlug } from "../lib/slug"
 import { getBlogOrThrow } from "./blogService"
 import {
@@ -24,6 +25,10 @@ import {
 
 function isVisibleStatus(status: ArticleStatus): boolean {
   return status === "published" || status === "featured"
+}
+
+function uniqueMedia(items: Media[]): Media[] {
+  return [...new Map(items.map((item) => [item.id, item])).values()]
 }
 
 function resolvePublishedAt(
@@ -70,7 +75,11 @@ export async function createArticleForBlog(
     ? baseSlug
     : await findAvailableSlug(baseSlug, (candidate) => articleSlugExists(db, blogId, candidate))
   const timestamp = nowIso()
-  const referencedMedia = await resolveReferencedMedia(db, blogId, null, input.body)
+  const bodyHtml = renderArticleHtml(input.bodyJson)
+  const coverImage = input.coverImage?.trim() || null
+  const bodyMedia = await resolveReferencedMedia(db, blogId, null, bodyHtml)
+  const coverMedia = coverImage ? await resolveReferencedMedia(db, blogId, null, coverImage) : []
+  const referencedMedia = uniqueMedia([...bodyMedia, ...coverMedia])
 
   const article = await createArticle(db, {
     id: crypto.randomUUID(),
@@ -79,7 +88,9 @@ export async function createArticleForBlog(
     slug,
     excerpt: input.excerpt,
     author: input.author,
-    body: input.body,
+    body: bodyHtml,
+    bodyJson: input.bodyJson,
+    coverImage,
     status: input.status,
     publishedAt: resolvePublishedAt(input.status, input.publishedAt, null),
     createdAt: timestamp,
@@ -114,19 +125,46 @@ export async function updateArticleForBlog(
   }
 
   const status = input.status ?? article.status
-  const previousMedia =
-    input.body !== undefined ? await findReferencedMedia(db, blogId, article.body) : ([] as Media[])
-  const referencedMedia =
-    input.body !== undefined
-      ? await resolveReferencedMedia(db, blogId, article.id, input.body)
-      : null
+  const bodyHtml = input.bodyJson !== undefined ? renderArticleHtml(input.bodyJson) : null
+  const coverImage =
+    input.coverImage !== undefined ? input.coverImage?.trim() || null : article.coverImage
+  const mediaChanged = bodyHtml !== null || input.coverImage !== undefined
+  let mediaSync: { assign: Media[]; keep: Media[] } | null = null
+
+  if (mediaChanged) {
+    const previousBodyMedia = await findReferencedMedia(db, blogId, article.body)
+    const previousCoverMedia = article.coverImage
+      ? await findReferencedMedia(db, blogId, article.coverImage)
+      : []
+    const nextBodyMedia =
+      bodyHtml !== null
+        ? await resolveReferencedMedia(db, blogId, article.id, bodyHtml)
+        : await findReferencedMedia(db, blogId, article.body)
+    const nextCoverMedia =
+      input.coverImage !== undefined
+        ? coverImage
+          ? await resolveReferencedMedia(db, blogId, article.id, coverImage)
+          : []
+        : coverImage
+          ? await findReferencedMedia(db, blogId, coverImage)
+          : []
+    const assignablePrevious = uniqueMedia([...previousBodyMedia, ...previousCoverMedia]).filter(
+      (item) => !item.articleId || item.articleId === article.id,
+    )
+
+    mediaSync = {
+      assign: uniqueMedia([...assignablePrevious, ...nextBodyMedia, ...nextCoverMedia]),
+      keep: uniqueMedia([...nextBodyMedia, ...nextCoverMedia]),
+    }
+  }
 
   const updated = await updateArticle(db, blogId, articleId, {
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.slug !== undefined ? { slug: input.slug } : {}),
     ...(input.excerpt !== undefined ? { excerpt: input.excerpt } : {}),
     ...(input.author !== undefined ? { author: input.author } : {}),
-    ...(input.body !== undefined ? { body: input.body } : {}),
+    ...(bodyHtml !== null ? { body: bodyHtml, bodyJson: input.bodyJson } : {}),
+    ...(input.coverImage !== undefined ? { coverImage } : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
     ...(input.publishedAt !== undefined || isVisibleStatus(status)
       ? { publishedAt: resolvePublishedAt(status, input.publishedAt, article.publishedAt) }
@@ -138,15 +176,8 @@ export async function updateArticleForBlog(
     throw new ApiError(404, "NOT_FOUND", "Artículo no encontrado")
   }
 
-  if (referencedMedia) {
-    const assignablePrevious = previousMedia.filter(
-      (item) => !item.articleId || item.articleId === article.id,
-    )
-
-    await syncMediaSafely(bucket, db, blogId, article.id, {
-      assign: [...assignablePrevious, ...referencedMedia],
-      keep: referencedMedia,
-    })
+  if (mediaSync) {
+    await syncMediaSafely(bucket, db, blogId, article.id, mediaSync)
   }
 
   return updated
@@ -166,7 +197,12 @@ export async function deleteArticleForBlog(
 
   const mediaKeys = await listArticleMediaKeys(db, blogId, article.id)
   const bodyMedia = await findReferencedMedia(db, blogId, article.body)
-  const unassignedMedia = bodyMedia.filter((item) => !item.articleId)
+  const coverMedia = article.coverImage
+    ? await findReferencedMedia(db, blogId, article.coverImage)
+    : []
+  const unassignedMedia = uniqueMedia([...bodyMedia, ...coverMedia]).filter(
+    (item) => !item.articleId,
+  )
   const keysToDelete = [...new Set([...mediaKeys, ...unassignedMedia.map((item) => item.r2Key)])]
   const deleted = await deleteArticle(db, blogId, article.id)
 

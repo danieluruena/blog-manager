@@ -1,5 +1,6 @@
 import { articleStatusValues, type ArticleStatus } from "@shared/constants"
 import type { ArticleCreateInput } from "@shared/schemas"
+import { EMPTY_RICH_TEXT_JSON } from "@shared/richtext"
 import type { ArticleDto } from "@shared/types"
 import { z } from "zod"
 
@@ -29,7 +30,11 @@ export const articleFormSchema = z.object({
     .max(120, "El autor no puede superar los 120 caracteres"),
   status: z.enum(articleStatusValues, { message: "Estado inválido" }),
   publishedAt: z.string(),
-  body: z.string().max(200_000, "El contenido es demasiado largo"),
+  bodyJson: z
+    .string()
+    .min(1, "El contenido es obligatorio")
+    .max(1_000_000, "El contenido es demasiado largo"),
+  coverImage: z.string().max(2048, "La URL de la portada es demasiado larga").nullable(),
 })
 
 export type ArticleFormValues = z.infer<typeof articleFormSchema>
@@ -45,7 +50,8 @@ export function toFormValues(
     author: article?.author ?? defaultAuthor,
     status: article?.status ?? "draft",
     publishedAt: toDateTimeLocal(article?.publishedAt),
-    body: article?.body ?? "",
+    bodyJson: article?.bodyJson ?? EMPTY_RICH_TEXT_JSON,
+    coverImage: article?.coverImage ?? null,
   }
 }
 
@@ -55,7 +61,8 @@ export function toInput(values: ArticleFormValues, status: ArticleStatus): Artic
     ...(values.slug ? { slug: values.slug } : {}),
     excerpt: values.excerpt,
     author: values.author,
-    body: values.body,
+    bodyJson: values.bodyJson,
+    coverImage: values.coverImage,
     status,
     publishedAt: fromDateTimeLocal(values.publishedAt),
   }

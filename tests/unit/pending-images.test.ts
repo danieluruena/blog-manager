@@ -5,44 +5,55 @@ import { extractBlobImageUrls, replaceBlobImageUrls } from "../../src/client/lib
 const firstBlob = "blob:http://localhost:5173/6f1a2b3c-1111-4111-8111-111111111111"
 const secondBlob = "blob:http://localhost:5173/6f1a2b3c-2222-4222-8222-222222222222"
 
+function documentJson(images: Array<{ src: string; alt?: string }>, text = "Hola"): string {
+  return JSON.stringify({
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [{ type: "text", text }],
+      },
+      ...images.map((image) => ({
+        type: "image",
+        attrs: { src: image.src, alt: image.alt ?? "" },
+      })),
+    ],
+  })
+}
+
 describe("pending images", () => {
   it("extrae las URLs blob usadas como imagen sin duplicados", () => {
-    const markdown = [
-      `![Primera](${firstBlob})`,
-      "",
-      `![Segunda](${secondBlob})`,
-      "",
-      `![Primera otra vez](${firstBlob})`,
-      "",
-      "![Remota](https://cdn.example.com/foto.png)",
-    ].join("\n")
+    const bodyJson = documentJson([
+      { src: firstBlob },
+      { src: secondBlob },
+      { src: firstBlob },
+      { src: "https://cdn.example.com/foto.webp" },
+    ])
 
-    expect(extractBlobImageUrls(markdown)).toEqual([firstBlob, secondBlob])
+    expect(extractBlobImageUrls(bodyJson)).toEqual([firstBlob, secondBlob])
   })
 
-  it("ignora imágenes que no son blob y texto que se parece", () => {
-    const markdown = [
-      "Texto con blob:http://localhost/algo suelto",
-      "![R2](/media/blog/imagen.png)",
-      "![Externa](https://example.com/imagen.png)",
-    ].join("\n")
-
-    expect(extractBlobImageUrls(markdown)).toEqual([])
+  it("ignora documentos inválidos o sin imágenes blob", () => {
+    expect(extractBlobImageUrls("no es json")).toEqual([])
+    expect(
+      extractBlobImageUrls(
+        documentJson([{ src: "/media/blog/imagen.webp" }, { src: "https://x.test/a.webp" }]),
+      ),
+    ).toEqual([])
   })
 
-  it("sustituye todas las apariciones por la URL pública", () => {
-    const markdown = `![A](${firstBlob}) y otra vez ![A](${firstBlob}) y ![B](${secondBlob})`
+  it("sustituye las URLs en los nodos de imagen", () => {
+    const bodyJson = documentJson([{ src: firstBlob }, { src: secondBlob }])
     const result = replaceBlobImageUrls(
-      markdown,
+      bodyJson,
       new Map([
-        [firstBlob, "https://worker.dev/media/blog/a.png"],
-        [secondBlob, "https://worker.dev/media/blog/b.png"],
+        [firstBlob, "https://worker.dev/media/blog/a.webp"],
+        [secondBlob, "https://worker.dev/media/blog/b.webp"],
       ]),
     )
 
     expect(result).not.toContain("blob:")
-    expect(result).toContain("![A](https://worker.dev/media/blog/a.png)")
-    expect(result).toContain("![B](https://worker.dev/media/blog/b.png)")
-    expect(result.match(/media\/blog\/a\.png/g)).toHaveLength(2)
+    expect(result).toContain("https://worker.dev/media/blog/a.webp")
+    expect(result).toContain("https://worker.dev/media/blog/b.webp")
   })
 })

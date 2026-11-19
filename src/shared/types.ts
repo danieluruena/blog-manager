@@ -73,6 +73,7 @@ export type ArticleSummaryDto = {
   title: string
   slug: string
   excerpt: string
+  coverImage: string | null
   author: string
   status: ArticleStatus
   createdAt: string
@@ -82,6 +83,7 @@ export type ArticleSummaryDto = {
 
 export type ArticleDto = ArticleSummaryDto & {
   body: string
+  bodyJson: string | null
 }
 
 export type PublicArticleSummaryDto = Omit<ArticleSummaryDto, "blogId">
