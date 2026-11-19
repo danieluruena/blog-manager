@@ -568,7 +568,8 @@ Permitir una imagen de portada por artículo, visible junto al título en el lis
 
 - [x] Migración `0003_article_cover_image` con la columna `cover_image`.
 - [x] Campo `coverImage` en la entrada de la API y en los DTO de resumen y detalle.
-- [x] Campo de portada en el formulario con previsualización, cambio y borrado.
+- [x] Campo de portada debajo del título con previsualización, cambio y borrado.
+- [x] Vista previa de la miniatura en dos configuraciones: portada a la izquierda y portada arriba.
 - [x] Optimización a WebP y subida diferida al guardar, junto a las imágenes del contenido.
 - [x] Asociación de la portada al artículo y limpieza de la anterior en R2 y D1.
 - [x] Miniatura en el listado de artículos y exposición en la API pública.

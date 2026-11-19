@@ -44,6 +44,7 @@ import {
 import { Input } from "../ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Textarea } from "../ui/textarea"
+import { ArticlePreview } from "./article-preview"
 import { CoverImageField } from "./cover-image-field"
 import { DeleteArticleDialog } from "./delete-article-dialog"
 import { RichTextEditor } from "./rich-text-editor"
@@ -92,7 +93,9 @@ export function ArticleForm({
   })
 
   const status = useWatch({ control: form.control, name: "status" })
+  const title = useWatch({ control: form.control, name: "title" })
   const excerpt = useWatch({ control: form.control, name: "excerpt" })
+  const coverImage = useWatch({ control: form.control, name: "coverImage" })
   const isDirty = form.formState.isDirty
 
   const mutation = useMutation({
@@ -358,13 +361,33 @@ export function ArticleForm({
 
                 <FormField
                   control={form.control}
+                  name="coverImage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Portada</FormLabel>
+                      <CoverImageField
+                        value={field.value}
+                        disabled={isBusy}
+                        onChange={field.onChange}
+                        onSelect={stageImage}
+                      />
+                      <FormDescription>
+                        Se muestra junto al título en los listados y en la API pública.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="excerpt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Extracto</FormLabel>
+                      <FormLabel>Descripción</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Resumen corto que se muestra en los listados."
+                          placeholder="Descripción breve que se muestra en los listados."
                           className="min-h-20 resize-y"
                           maxLength={300}
                           {...field}
@@ -378,6 +401,39 @@ export function ArticleForm({
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-sm font-medium leading-none">Vista previa en el listado</p>
+                    <p className="mt-1.5 text-sm text-muted-foreground">
+                      Así se verá la miniatura del artículo en las dos configuraciones más comunes.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                        Portada a la izquierda
+                      </p>
+                      <ArticlePreview
+                        variant="horizontal"
+                        title={title}
+                        description={excerpt}
+                        coverImage={coverImage ?? null}
+                      />
+                    </div>
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                        Portada arriba
+                      </p>
+                      <ArticlePreview
+                        variant="vertical"
+                        title={title}
+                        description={excerpt}
+                        coverImage={coverImage ?? null}
+                      />
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -494,32 +550,6 @@ export function ArticleForm({
                           ? "Identificador de la URL. Cámbialo solo si es necesario."
                           : "Si lo dejas vacío, se genera desde el título."}
                       </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="border-line bg-surface">
-              <CardHeader className="px-5">
-                <CardTitle className="text-base">Portada</CardTitle>
-                <CardDescription>
-                  Se muestra junto al título en los listados y en la API pública.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-5">
-                <FormField
-                  control={form.control}
-                  name="coverImage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <CoverImageField
-                        value={field.value}
-                        disabled={isBusy}
-                        onChange={field.onChange}
-                        onSelect={stageImage}
-                      />
                       <FormMessage />
                     </FormItem>
                   )}

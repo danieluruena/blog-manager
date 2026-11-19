@@ -234,6 +234,7 @@ Un documento mínimo válido es:
 Reglas:
 
 - `blogId` no se envía en el body: viene de la URL y es inmutable.
+- `excerpt` es la descripción corta del artículo; en el panel se muestra como «Descripción».
 - El slug es único dentro del blog.
 - Si se publica (`published` o `featured`) sin `publishedAt`, el servidor asigna la fecha actual.
 - Un artículo de otro blog bajo la URL de este responde `404`, no `403`.

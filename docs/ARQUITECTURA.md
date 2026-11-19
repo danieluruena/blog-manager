@@ -741,7 +741,7 @@ Tipografía:
 3. **Blogs:** grid de tarjetas con nombre, descripción, URL, estado, número de artículos y acciones. Crear/editar en un drawer o página dedicada.
 4. **Workspace del blog:** cabecera con identidad del blog, enlace al sitio, toggle activo/inactivo y botón “Nuevo artículo”; tabs “Artículos” y “Ajustes”. En Ajustes se editan `site_url`, `allowed_origins`, descripción y estado.
 5. **Artículos:** barra de filtros (búsqueda, estado, orden), tabla con título, autor, estado, fecha de publicación, actualización y acciones. Paginación.
-6. **Editor de artículo:** título grande, panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug) y portada con previsualización, editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes las optimiza a WebP y las sube a R2 al guardar.
+6. **Editor de artículo:** título, portada, descripción y vista previa de la miniatura en dos configuraciones en la columna principal; panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug); editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes las optimiza a WebP y las sube a R2 al guardar.
 7. **Usuarios (post-MVP):** lista de usuarios, roles y estado; solo visible para `admin`.
 
 ### 9.4. Componentes y UX
