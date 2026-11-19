@@ -682,7 +682,7 @@ Se implementa autenticación propia, sin Cloudflare Access, para que funcione en
 - **Cabeceras:** `secureHeaders` de Hono (CSP, `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy`).
 - **CORS:** solo en la API pública; sin credenciales; `Access-Control-Allow-Origin` calculado desde `site_url` + `allowed_origins`; `Vary: Origin`.
 - **Rate limiting:** login (tabla `auth_attempts`) y API pública (límite por IP, Workers Rate Limiting binding o contador en D1).
-- **Uploads:** límite de 5 MB, MIME permitido (`image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`), nombre generado en servidor, `Content-Disposition: inline`, `nosniff`. Evitar SVG sin sanitizar.
+- **Uploads:** límite de 5 MB, solo WebP (el navegador convierte y optimiza antes), nombre generado en servidor, entrega en streaming a R2, `Content-Disposition: inline`, `nosniff`. Evitar SVG sin sanitizar.
 - **Secretos:** `AUTH_PEPPER` es obligatorio para hashear contraseñas. En producción se configura con `wrangler secret put AUTH_PEPPER`; en local vive en `.dev.vars`. Nunca en `wrangler.jsonc` ni en el código.
 - **Logs:** sin bodies, contraseñas ni tokens; request ID para correlación.
 - **Backups:** Time Travel de D1 + export periódico opcional.
@@ -778,7 +778,7 @@ No habrá una ruta global de artículos ni un buscador que mezcle artículos de 
   - Entrega con `Cache-Control: public, max-age=31536000, immutable` y ETag.
   - Al borrar un blog sin artículos, borrar sus objetos de R2 en `ctx.waitUntil()` antes de eliminar la fila (la metadata de `media` cae en cascada).
   - También se puede insertar una URL externa manualmente.
-- **Límites:** 200.000 caracteres de body, 5 MB por imagen.
+- **Límites:** 200.000 caracteres de body, 5 MB por imagen (WebP optimizado en el navegador).
 - **Autoguardado:** no en MVP. Sí aviso de cambios sin guardar y guardado explícito. Se puede añadir autosave con debounce en una fase posterior.
 
 ---

@@ -135,7 +135,7 @@ la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
 - [x] CSRF: `SameSite=Strict` + validación de `Origin` en mutaciones.
 - [x] CORS por blog con lista de orígenes, `Vary: Origin`, sin credenciales.
 - [x] Rutas de administración protegidas con `requireAuth`; acciones destructivas con `requireAdmin`.
-- [x] Uploads: 5 MB, MIME permitido, bytes mágicos, `nosniff` y SVG rechazado.
+- [x] Uploads: 5 MB, solo WebP optimizado, bytes mágicos, `nosniff` y SVG rechazado.
 - [x] Cabeceras: CSP, HSTS (HTTPS), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`.
 - [x] Sin secretos en el repositorio; `AUTH_PEPPER` es un secret del Worker.
 - [x] Sin estado global mutable en el Worker; base de datos por petición.

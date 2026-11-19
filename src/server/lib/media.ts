@@ -1,14 +1,6 @@
-import { imageMimeTypeValues, maxImageBytes, type ImageMimeType } from "../../shared/constants"
+import { maxImageBytes, type ImageMimeType } from "../../shared/constants"
 
 export const MAX_IMAGE_BYTES = maxImageBytes
-
-const imageExtensions: Record<ImageMimeType, string> = {
-  "image/avif": "avif",
-  "image/gif": "gif",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-}
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const mediaFilenamePattern =
@@ -20,14 +12,6 @@ export function isUuid(value: string): boolean {
 
 export function isMediaFilename(value: string): boolean {
   return mediaFilenamePattern.test(value)
-}
-
-export function isAllowedImageMime(mime: string): mime is ImageMimeType {
-  return (imageMimeTypeValues as readonly string[]).includes(mime)
-}
-
-export function extensionForMime(mime: ImageMimeType): string {
-  return imageExtensions[mime]
 }
 
 function ascii(bytes: Uint8Array, start: number, length: number): string {

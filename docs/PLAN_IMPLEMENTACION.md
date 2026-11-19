@@ -386,9 +386,10 @@ Subir imágenes desde el editor y servirlas con caché.
 
 - [x] Crear bucket R2 y binding `MEDIA` (el bootstrap ya lo deja preparado).
 - [x] Endpoint `POST /api/admin/blogs/:blogId/media` (multipart):
-  - [x] Validar tamaño (≤ 5 MB) y MIME permitido.
+  - [x] Validar tamaño (≤ 5 MB) y que sea WebP.
+  - [x] Optimizar en el navegador: conversión a WebP, lado mayor ≤ 2560 px y calidad 0.92.
   - [x] Generar clave `blogs/<blogId>/<uuid>.<ext>`.
-  - [x] Guardar objeto en R2 y metadata en D1.
+  - [x] Guardar objeto en R2 en streaming y metadata en D1.
   - [x] Devolver URL pública.
 - [x] Endpoint `GET /media/:blogId/:filename`:
   - [x] Leer de R2.
@@ -433,7 +434,7 @@ Cerrar seguridad, rendimiento, accesibilidad y cobertura de tests.
 - [x] Revisar CORS: origen de `site_url`, `allowed_origins`, `Vary: Origin`, sin credenciales.
 - [x] Revisar cabeceras de seguridad y CSP ajustada al build.
 - [x] Revisar uploads: MIME, tamaño, `nosniff`, SVG.
-- [x] Tests de integración completos con `@cloudflare/vitest-plugin` (76 tests).
+- [x] Tests de integración completos con `@cloudflare/vitest-plugin` (77 tests).
 - [x] Test E2E de humo con Playwright (verificado manualmente; no en CI):
   - [x] Login → crear blog → crear artículo → subir imagen → publicar → verificar API pública → borrado bloqueado.
 - [x] Auditoría de accesibilidad: foco, contraste, labels, teclado (axe sin violaciones en 5 pantallas).

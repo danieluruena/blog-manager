@@ -10,15 +10,14 @@ import {
   loginAs,
 } from "./helpers"
 
-const PNG_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+const WEBP_BASE64 = "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA=="
 
-function pngBytes(): Uint8Array {
-  return Uint8Array.from(atob(PNG_BASE64), (character) => character.charCodeAt(0))
+function webpBytes(): Uint8Array {
+  return Uint8Array.from(atob(WEBP_BASE64), (character) => character.charCodeAt(0))
 }
 
-function imageFile(name = "pixel.png"): File {
-  return new File([pngBytes()], name, { type: "image/png" })
+function imageFile(name = "pixel.webp"): File {
+  return new File([webpBytes()], name, { type: "image/webp" })
 }
 
 function uploadRequest(blogId: string, cookie: string): Request {

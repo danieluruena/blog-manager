@@ -11,15 +11,20 @@ import {
   loginAs,
 } from "./helpers"
 
+const WEBP_BASE64 = "UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA=="
 const PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+function webpBytes(): Uint8Array {
+  return Uint8Array.from(atob(WEBP_BASE64), (character) => character.charCodeAt(0))
+}
 
 function pngBytes(): Uint8Array {
   return Uint8Array.from(atob(PNG_BASE64), (character) => character.charCodeAt(0))
 }
 
-function imageFile(name = "pixel.png", type = "image/png"): File {
-  return new File([pngBytes()], name, { type })
+function imageFile(name = "pixel.webp", type = "image/webp"): File {
+  return new File([webpBytes()], name, { type })
 }
 
 function uploadRequest(blogId: string, file: File, cookie: string | null): Request {
@@ -88,24 +93,24 @@ describe("media API", () => {
     }
 
     expect(body.data.blogId).toBe(blog.id)
-    expect(body.data.filename).toMatch(/^[0-9a-f-]{36}\.png$/)
-    expect(body.data.mimeType).toBe("image/png")
-    expect(body.data.sizeBytes).toBe(pngBytes().length)
+    expect(body.data.filename).toMatch(/^[0-9a-f-]{36}\.webp$/)
+    expect(body.data.mimeType).toBe("image/webp")
+    expect(body.data.sizeBytes).toBe(webpBytes().length)
     expect(body.data.url).toBe(`http://example.com/media/${blog.id}/${body.data.filename}`)
 
     const image = await apiFetch(new Request(body.data.url))
 
     expect(image.status).toBe(200)
-    expect(image.headers.get("content-type")).toBe("image/png")
+    expect(image.headers.get("content-type")).toBe("image/webp")
     expect(image.headers.get("cache-control")).toBe("public, max-age=31536000, immutable")
     expect(image.headers.get("x-content-type-options")).toBe("nosniff")
-    expect(image.headers.get("content-length")).toBe(String(pngBytes().length))
+    expect(image.headers.get("content-length")).toBe(String(webpBytes().length))
 
     const etag = image.headers.get("etag")
     expect(etag).toBeTruthy()
 
     const bytes = new Uint8Array(await image.arrayBuffer())
-    expect(Array.from(bytes)).toEqual(Array.from(pngBytes()))
+    expect(Array.from(bytes)).toEqual(Array.from(webpBytes()))
 
     const cached = await apiFetch(
       new Request(body.data.url, { headers: { "if-none-match": etag ?? "" } }),
@@ -114,24 +119,28 @@ describe("media API", () => {
     expect(cached.status).toBe(304)
   })
 
-  it("rechaza formatos no permitidos, contenido falsificado y archivos vacíos", async () => {
+  it("solo acepta WebP y rechaza contenido falsificado o vacío", async () => {
     const { blog, adminCookie } = await setup()
 
     const textFile = new File(["hola"], "nota.txt", { type: "text/plain" })
     const textResponse = await apiFetch(uploadRequest(blog.id, textFile, adminCookie))
     expect(textResponse.status).toBe(415)
 
-    const spoofed = imageFile("pixel.gif", "image/gif")
+    const pngFile = new File([pngBytes()], "pixel.png", { type: "image/png" })
+    const pngResponse = await apiFetch(uploadRequest(blog.id, pngFile, adminCookie))
+    expect(pngResponse.status).toBe(415)
+
+    const spoofed = new File([pngBytes()], "falso.webp", { type: "image/webp" })
     const spoofedResponse = await apiFetch(uploadRequest(blog.id, spoofed, adminCookie))
     expect(spoofedResponse.status).toBe(415)
 
-    const garbage = new File([new Uint8Array([1, 2, 3, 4])], "fake.png", {
-      type: "image/png",
+    const garbage = new File([new Uint8Array([1, 2, 3, 4])], "fake.webp", {
+      type: "image/webp",
     })
     const garbageResponse = await apiFetch(uploadRequest(blog.id, garbage, adminCookie))
     expect(garbageResponse.status).toBe(415)
 
-    const empty = new File([], "empty.png", { type: "image/png" })
+    const empty = new File([], "empty.webp", { type: "image/webp" })
     const emptyResponse = await apiFetch(uploadRequest(blog.id, empty, adminCookie))
     expect(emptyResponse.status).toBe(400)
 
@@ -144,8 +153,8 @@ describe("media API", () => {
 
   it("rechaza imágenes de más de 5 MB", async () => {
     const { blog, adminCookie } = await setup()
-    const bigFile = new File([new Uint8Array(MAX_IMAGE_BYTES + 1)], "grande.png", {
-      type: "image/png",
+    const bigFile = new File([new Uint8Array(MAX_IMAGE_BYTES + 1)], "grande.webp", {
+      type: "image/webp",
     })
 
     const response = await apiFetch(uploadRequest(blog.id, bigFile, adminCookie))
@@ -186,8 +195,8 @@ describe("media API", () => {
   it("devuelve 404 para claves inexistentes o nombres inválidos", async () => {
     const { blog } = await setup()
     const cases = [
-      `/media/${blog.id}/00000000-0000-4000-8000-000000000000.png`,
-      `/media/no-es-un-uuid/00000000-0000-4000-8000-000000000000.png`,
+      `/media/${blog.id}/00000000-0000-4000-8000-000000000000.webp`,
+      `/media/no-es-un-uuid/00000000-0000-4000-8000-000000000000.webp`,
       `/media/${blog.id}/archivo.txt`,
       `/media/${blog.id}/..%2F..%2Fsecreto.png`,
     ]

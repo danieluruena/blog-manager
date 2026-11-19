@@ -108,7 +108,7 @@ npm run db:seed
 
 ### Imágenes en R2
 
-- Formatos: JPEG, PNG, WebP, GIF y AVIF. Tamaño máximo: 5 MB.
+- El navegador optimiza cada imagen antes de subirla: la convierte a **WebP**, limita el lado mayor a **2560 px** y usa calidad **0.92**. Se aceptan como origen JPEG, PNG, WebP y AVIF de hasta 20 MB (sin GIF animado); el WebP final no puede superar 5 MB.
 - Puedes pegar o arrastrar imágenes directamente en el editor; mientras editas se muestran en local con URLs `blob:` y **solo se suben a R2 al guardar el artículo**, únicamente las que sigan presentes en el markdown.
 - Cada imagen pertenece a un artículo y es un objeto independiente en R2. Si quitas una imagen y guardas, se elimina de R2 y de D1. No se puede reutilizar la URL de una imagen de otro artículo.
 - Límites y endpoints en [`docs/API.md`](docs/API.md#imágenes).
@@ -195,7 +195,7 @@ npm run check      # typecheck + lint + tests + build
 npm run format     # Prettier sobre el código
 ```
 
-La suite incluye 76 tests de integración y unitarios. La interfaz se auditó con
+La suite incluye 77 tests de integración y unitarios. La interfaz se auditó con
 axe (WCAG 2 A/AA) en login, panel, blogs, artículos y editor sin violaciones
 detectadas.
 

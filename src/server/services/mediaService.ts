@@ -1,3 +1,5 @@
+import { uploadImageMimeType } from "@shared/constants"
+
 import type { Database } from "../db/client"
 import {
   assignMediaToArticle,
@@ -11,16 +13,10 @@ import {
 import type { Media } from "../db/schema"
 import { nowIso } from "../lib/dates"
 import { ApiError } from "../lib/errors"
-import {
-  detectImageMime,
-  extensionForMime,
-  extractMediaFilenames,
-  isAllowedImageMime,
-  MAX_IMAGE_BYTES,
-  mediaKey,
-} from "../lib/media"
+import { detectImageMime, extractMediaFilenames, MAX_IMAGE_BYTES, mediaKey } from "../lib/media"
 
-const allowedFormatsMessage = "Formato no permitido. Usa JPEG, PNG, WebP, GIF o AVIF."
+const allowedFormatsMessage =
+  "Solo se admiten imágenes WebP optimizadas. Vuelve a añadir la imagen desde el editor."
 
 export async function storeImage(
   bucket: R2Bucket,
@@ -36,31 +32,23 @@ export async function storeImage(
     throw new ApiError(413, "FILE_TOO_LARGE", "La imagen no puede superar los 5 MB")
   }
 
-  if (!isAllowedImageMime(file.type)) {
+  if (file.type !== uploadImageMimeType) {
     throw new ApiError(415, "UNSUPPORTED_MEDIA_TYPE", allowedFormatsMessage)
   }
 
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const detected = detectImageMime(bytes)
+  const header = new Uint8Array(await file.slice(0, 32).arrayBuffer())
+  const detected = detectImageMime(header)
 
-  if (!detected) {
-    throw new ApiError(415, "INVALID_IMAGE", "El archivo no parece una imagen válida")
+  if (detected !== uploadImageMimeType) {
+    throw new ApiError(415, "INVALID_IMAGE", "El archivo no es un WebP válido")
   }
 
-  if (detected !== file.type) {
-    throw new ApiError(
-      415,
-      "MIME_MISMATCH",
-      "El tipo declarado no coincide con el contenido de la imagen",
-    )
-  }
-
-  const filename = `${crypto.randomUUID()}.${extensionForMime(detected)}`
+  const filename = `${crypto.randomUUID()}.webp`
   const key = mediaKey(blogId, filename)
 
-  await bucket.put(key, bytes, {
+  await bucket.put(key, file.stream(), {
     httpMetadata: {
-      contentType: detected,
+      contentType: uploadImageMimeType,
       cacheControl: "public, max-age=31536000, immutable",
     },
     customMetadata: { blogId },
@@ -72,7 +60,7 @@ export async function storeImage(
       blogId,
       r2Key: key,
       filename,
-      mimeType: detected,
+      mimeType: uploadImageMimeType,
       sizeBytes: file.size,
       createdAt: nowIso(),
     })
