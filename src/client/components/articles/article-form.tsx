@@ -20,6 +20,7 @@ import { nowDateTimeLocal } from "../../lib/datetime"
 import { formatDateTime, formatImageSize } from "../../lib/format"
 import { optimizeImage } from "../../lib/image-optimization"
 import { extractBlobMediaUrls, replaceBlobMediaUrls } from "../../lib/pending-images"
+import type { VideoOptimizationHandlers } from "../../lib/video-optimization"
 import { PageHeader } from "../layout/page-header"
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert"
 import { Button } from "../ui/button"
@@ -63,6 +64,18 @@ const statusDescriptions: Record<ArticleStatus, string> = {
   featured: "Visible en la API pública y marcado como destacado.",
 }
 
+const VIDEO_WARNING =
+  "Todos los vídeos e imágenes deben estar optimizados antes de guardar el artículo."
+
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error.name === "AbortError" || error.name === "ConversionCanceledError")
+  )
+}
+
 type SavePayload = {
   values: ArticleFormValues
   status: ArticleStatus
@@ -81,11 +94,13 @@ export function ArticleForm({
   const navigate = useNavigate()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [isProcessingVideo, setIsProcessingVideo] = useState(false)
+  const [pendingVideoCount, setPendingVideoCount] = useState(0)
+  const [videoWarning, setVideoWarning] = useState<string | null>(null)
   const skipBlockRef = useRef<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const pendingMediaRef = useRef(new Map<string, File>())
   const uploadedMediaRef = useRef(new Map<string, string>())
+  const pendingVideoOptimizationsRef = useRef(new Map<string, AbortController>())
   const backTo = `/blogs/${blog.id}/articles`
 
   const form = useForm<ArticleFormValues>({
@@ -114,6 +129,7 @@ export function ArticleForm({
       queryClient.invalidateQueries({ queryKey: ["articles"] })
       queryClient.invalidateQueries({ queryKey: ["stats"] })
       queryClient.invalidateQueries({ queryKey: ["blog", blog.id] })
+      setVideoWarning(null)
 
       toast.success(
         isVisibleStatus(variables.status)
@@ -176,10 +192,16 @@ export function ArticleForm({
   useEffect(() => {
     const pendingMedia = pendingMediaRef.current
     const uploadedMedia = uploadedMediaRef.current
+    const pendingVideos = pendingVideoOptimizationsRef.current
 
     return () => {
       const blobUrls = [...pendingMedia.keys()]
 
+      for (const controller of pendingVideos.values()) {
+        controller.abort()
+      }
+
+      pendingVideos.clear()
       pendingMedia.clear()
       uploadedMedia.clear()
 
@@ -203,8 +225,10 @@ export function ArticleForm({
   }
 
   async function save(values: ArticleFormValues, nextStatus: ArticleStatus) {
-    if (isProcessingVideo) {
-      toast.info("Espera a que termine la optimización del vídeo")
+    if (pendingVideoOptimizationsRef.current.size > 0) {
+      toast.warning("Espera a que terminen las optimizaciones de vídeo", {
+        description: VIDEO_WARNING,
+      })
       return
     }
 
@@ -256,47 +280,94 @@ export function ArticleForm({
     }
   }
 
-  async function stageVideo(file: File): Promise<string> {
-    setIsProcessingVideo(true)
-    const toastId = toast.loading("Preparando el optimizador de vídeo…", {
-      description: "Puede tardar unos minutos. No cierres esta pestaña.",
+  function startVideoOptimization(file: File, handlers: VideoOptimizationHandlers): void {
+    const controller = new AbortController()
+    const id = crypto.randomUUID()
+    const cancel = () => controller.abort()
+    const toastId = toast.loading("Optimizando vídeo…", {
+      description: "Puedes seguir editando. El guardado se habilitará al terminar.",
+      duration: Infinity,
+      dismissible: false,
+      action: { label: "Cancelar", onClick: cancel },
     })
     let lastPercent = -1
 
-    try {
-      const { optimizeVideo } = await import("../../lib/video-optimization")
-      const optimized = await optimizeVideo(file, (progress) => {
-        const percent = Math.round(progress * 100)
+    pendingVideoOptimizationsRef.current.set(id, controller)
+    setPendingVideoCount(pendingVideoOptimizationsRef.current.size)
 
-        if (percent !== lastPercent) {
-          lastPercent = percent
-          toast.loading(`Optimizando vídeo… ${percent}%`, {
-            id: toastId,
-            description: "No cierres esta pestaña.",
+    void (async () => {
+      try {
+        const { optimizeVideo } = await import("../../lib/video-optimization")
+        const optimized = await optimizeVideo(file, {
+          signal: controller.signal,
+          onProgress: (progress) => {
+            const percent = Math.round(progress * 100)
+
+            if (percent !== lastPercent) {
+              lastPercent = percent
+              toast.loading(`Optimizando vídeo… ${percent}%`, {
+                id: toastId,
+                description: "Puedes seguir editando. El guardado se habilitará al terminar.",
+                dismissible: false,
+                action: { label: "Cancelar", onClick: cancel },
+              })
+            }
+          },
+        })
+
+        if (controller.signal.aborted) {
+          handlers.onCancel()
+          setVideoWarning(VIDEO_WARNING)
+          toast.dismiss(toastId)
+          toast.warning("Optimización cancelada", {
+            description: VIDEO_WARNING,
+            duration: 8000,
           })
+          return
         }
-      })
-      const blobUrl = URL.createObjectURL(optimized.file)
 
-      pendingMediaRef.current.set(blobUrl, optimized.file)
+        const optimizedUrl = URL.createObjectURL(optimized.file)
+        const applied = handlers.onComplete(optimizedUrl)
 
-      toast.success("Vídeo optimizado a WebM", {
-        id: toastId,
-        description: `${formatImageSize(optimized.originalSize)} → ${formatImageSize(optimized.optimizedSize)}`,
-      })
+        if (!applied) {
+          URL.revokeObjectURL(optimizedUrl)
+          toast.dismiss(toastId)
+          toast.info("El vídeo se quitó del artículo")
+          return
+        }
 
-      return blobUrl
-    } catch (optimizationError) {
-      toast.error(
-        optimizationError instanceof Error
-          ? optimizationError.message
-          : "No se pudo optimizar el vídeo",
-        { id: toastId },
-      )
-      throw optimizationError
-    } finally {
-      setIsProcessingVideo(false)
-    }
+        pendingMediaRef.current.set(optimizedUrl, optimized.file)
+        setVideoWarning(null)
+        toast.dismiss(toastId)
+        toast.success("Vídeo optimizado a WebM", {
+          description: `${formatImageSize(optimized.originalSize)} → ${formatImageSize(optimized.optimizedSize)}`,
+        })
+      } catch (optimizationError) {
+        const aborted = controller.signal.aborted || isAbortError(optimizationError)
+
+        handlers.onCancel()
+        toast.dismiss(toastId)
+
+        if (aborted) {
+          setVideoWarning(VIDEO_WARNING)
+          toast.warning("Optimización cancelada", {
+            description: VIDEO_WARNING,
+            duration: 8000,
+          })
+        } else {
+          setVideoWarning(VIDEO_WARNING)
+          toast.error(
+            optimizationError instanceof Error
+              ? optimizationError.message
+              : "No se pudo optimizar el vídeo",
+            { description: VIDEO_WARNING, duration: 8000 },
+          )
+        }
+      } finally {
+        pendingVideoOptimizationsRef.current.delete(id)
+        setPendingVideoCount(pendingVideoOptimizationsRef.current.size)
+      }
+    })()
   }
 
   async function uploadPendingMedia(blobUrls: string[]): Promise<Map<string, string>> {
@@ -352,7 +423,7 @@ export function ArticleForm({
 
   const error = mutation.error instanceof ApiError ? mutation.error : null
   const visible = isVisibleStatus(status)
-  const isBusy = mutation.isPending || isUploading || isProcessingVideo
+  const isBusy = mutation.isPending || isUploading || pendingVideoCount > 0
 
   return (
     <Form {...form}>
@@ -387,6 +458,16 @@ export function ArticleForm({
             <AlertCircle className="size-4" />
             <AlertTitle>No se pudo guardar el artículo</AlertTitle>
             <AlertDescription>{error.message}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {videoWarning ? (
+          <Alert className="border-warning/30 bg-warning/10">
+            <AlertCircle className="size-4 text-warning" />
+            <AlertTitle>Vídeo no optimizado</AlertTitle>
+            <AlertDescription>
+              El vídeo se ha eliminado del artículo. {videoWarning}
+            </AlertDescription>
           </Alert>
         ) : null}
 
@@ -503,7 +584,7 @@ export function ArticleForm({
                         initialHtml={article?.body ?? ""}
                         onChange={field.onChange}
                         onUploadImage={stageImage}
-                        onUploadVideo={stageVideo}
+                        onOptimizeVideo={startVideoOptimization}
                       />
                       <FormMessage />
                     </FormItem>
@@ -668,10 +749,10 @@ export function ArticleForm({
                 <Loader2 className="size-3.5 animate-spin" />
                 Subiendo archivos…
               </span>
-            ) : isProcessingVideo ? (
+            ) : pendingVideoCount > 0 ? (
               <span className="inline-flex items-center gap-2 text-brand">
                 <Loader2 className="size-3.5 animate-spin" />
-                Optimizando vídeo…
+                Optimizando vídeo… ({pendingVideoCount})
               </span>
             ) : isDirty ? (
               <span className="inline-flex items-center gap-2 text-warning">

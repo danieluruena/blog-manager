@@ -598,6 +598,8 @@ Permitir insertar vídeos en el contenido con el mismo flujo que las imágenes: 
 
 - [x] Nodo Tiptap `video` y renderizado HTML seguro con `<video controls>`.
 - [x] Conversión a WebM (VP9/VP8 + Opus) en el navegador con Mediabunny y WebCodecs.
+- [x] Previsualización inmediata del vídeo original y optimización en segundo plano con progreso y cancelación.
+- [x] Bloqueo del guardado mientras haya vídeos optimizándose; al cancelar se retira el vídeo y se avisa.
 - [x] Límites: 250 MB de origen, 1920 px de lado mayor, 128 kbps de audio y 50 MB de WebM final.
 - [x] Subida diferida al guardar, asociación al artículo y limpieza de vídeos retirados.
 - [x] Endpoint de medios con `video/webm`, validación de bytes mágicos y entrega con `Range`.
@@ -607,7 +609,7 @@ Permitir insertar vídeos en el contenido con el mismo flujo que las imágenes: 
 
 ### Criterios de aceptación
 
-- El vídeo se previsualiza en local antes de guardar y se sube solo al guardar.
+- El vídeo se ve de inmediato y la optimización se puede cancelar; al cancelar, el vídeo se retira y se muestra el aviso.
 - Se guarda como WebM en R2 y el HTML generado incluye `<video>`.
 - La entrega responde `206` a peticiones `Range`.
 - Quitar el vídeo o borrar el artículo elimina el objeto de R2 y su fila de D1.

@@ -37,6 +37,7 @@ import {
   TEXT_COLORS,
 } from "../../lib/editor-options"
 import { loadFontsFromRichText, loadGoogleFont } from "../../lib/font-loading"
+import type { VideoOptimizationHandlers } from "../../lib/video-optimization"
 import { Button } from "../ui/button"
 import {
   Dialog,
@@ -62,7 +63,7 @@ type TiptapEditorProps = {
   initialHtml: string
   onChange: (bodyJson: string) => void
   onUploadImage: (file: File) => Promise<string>
-  onUploadVideo: (file: File) => Promise<string>
+  onOptimizeVideo: (file: File, handlers: VideoOptimizationHandlers) => void
 }
 
 function initialContent(initialJson: string | null, initialHtml: string): JSONContent | string {
@@ -134,14 +135,15 @@ export function TiptapEditor({
   initialHtml,
   onChange,
   onUploadImage,
-  onUploadVideo,
+  onOptimizeVideo,
 }: TiptapEditorProps) {
   const onChangeRef = useRef(onChange)
   const onUploadImageRef = useRef(onUploadImage)
-  const onUploadVideoRef = useRef(onUploadVideo)
+  const onOptimizeVideoRef = useRef(onOptimizeVideo)
   const editorRef = useRef<Editor | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const previewUrlsRef = useRef<Set<string>>(new Set())
   const textColorInputRef = useRef<HTMLInputElement>(null)
   const highlightInputRef = useRef<HTMLInputElement>(null)
   const [linkOpen, setLinkOpen] = useState(false)
@@ -149,7 +151,19 @@ export function TiptapEditor({
 
   onChangeRef.current = onChange
   onUploadImageRef.current = onUploadImage
-  onUploadVideoRef.current = onUploadVideo
+  onOptimizeVideoRef.current = onOptimizeVideo
+
+  useEffect(() => {
+    const previewUrls = previewUrlsRef.current
+
+    return () => {
+      for (const url of previewUrls) {
+        URL.revokeObjectURL(url)
+      }
+
+      previewUrls.clear()
+    }
+  }, [])
 
   async function insertImages(files: File[]) {
     const current = editorRef.current
@@ -168,24 +182,97 @@ export function TiptapEditor({
     }
   }
 
-  async function insertVideos(files: File[]) {
+  function replaceVideoSrc(editor: Editor, previousSrc: string, nextSrc: string): boolean {
+    if (editor.isDestroyed) {
+      return false
+    }
+
+    let found = false
+
+    editor.state.doc.descendants((node, pos) => {
+      if (found) {
+        return false
+      }
+
+      if (node.type.name !== "video" || node.attrs.src !== previousSrc) {
+        return undefined
+      }
+
+      const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        src: nextSrc,
+      })
+
+      tr.setMeta("addToHistory", false)
+      editor.view.dispatch(tr)
+      found = true
+      return false
+    })
+
+    return found
+  }
+
+  function removeVideoNode(editor: Editor, src: string): void {
+    if (editor.isDestroyed) {
+      return
+    }
+
+    const positions: Array<{ pos: number; size: number }> = []
+
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === "video" && node.attrs.src === src) {
+        positions.push({ pos, size: node.nodeSize })
+      }
+
+      return undefined
+    })
+
+    if (positions.length === 0) {
+      return
+    }
+
+    const tr = editor.state.tr
+
+    for (const { pos, size } of positions.sort((left, right) => right.pos - left.pos)) {
+      tr.delete(pos, pos + size)
+    }
+
+    tr.setMeta("addToHistory", false)
+    editor.view.dispatch(tr)
+  }
+
+  function insertVideos(files: File[]): void {
     const current = editorRef.current
 
-    if (!current) {
+    if (!current || current.isDestroyed) {
       return
     }
 
     for (const file of files) {
-      try {
-        const url = await onUploadVideoRef.current(file)
-        current
-          .chain()
-          .focus()
-          .insertContent({ type: "video", attrs: { src: url } })
-          .run()
-      } catch {
-        // El toast de error lo muestra el manejador de subida.
-      }
+      const previewUrl = URL.createObjectURL(file)
+
+      previewUrlsRef.current.add(previewUrl)
+      current
+        .chain()
+        .focus()
+        .insertContent({ type: "video", attrs: { src: previewUrl } })
+        .run()
+
+      onOptimizeVideoRef.current(file, {
+        onComplete: (optimizedUrl) => {
+          const applied = replaceVideoSrc(current, previewUrl, optimizedUrl)
+
+          previewUrlsRef.current.delete(previewUrl)
+          setTimeout(() => URL.revokeObjectURL(previewUrl), 1000)
+
+          return applied
+        },
+        onCancel: () => {
+          removeVideoNode(current, previewUrl)
+          previewUrlsRef.current.delete(previewUrl)
+          setTimeout(() => URL.revokeObjectURL(previewUrl), 1000)
+        },
+      })
     }
   }
 
@@ -222,7 +309,7 @@ export function TiptapEditor({
     }
 
     if (videos.length > 0) {
-      void insertVideos(videos)
+      insertVideos(videos)
     }
 
     return true
@@ -697,7 +784,7 @@ export function TiptapEditor({
           const file = event.target.files?.[event.target.files.length - 1]
 
           if (file) {
-            void insertVideos([file])
+            insertVideos([file])
           }
 
           event.target.value = ""

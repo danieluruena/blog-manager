@@ -9,8 +9,24 @@ export type OptimizedVideo = {
   duration: number
 }
 
+export type VideoOptimizationHandlers = {
+  /** Devuelve true si el nodo del editor se actualizó con la URL optimizada. */
+  onComplete: (optimizedUrl: string) => boolean
+  /** El vídeo debe quitarse del editor. */
+  onCancel: () => void
+}
+
+export type OptimizeVideoOptions = {
+  signal?: AbortSignal
+  onProgress?: (progress: number) => void
+}
+
 const MAX_VIDEO_DIMENSION = 1920
 const videoExtensionPattern = /\.(mp4|m4v|mov|webm|mkv|ogv|ts)$/i
+
+function abortError(): DOMException {
+  return new DOMException("Optimización cancelada", "AbortError")
+}
 
 /**
  * Convierte un vídeo local a WebM (VP9/VP8 + Opus) con Mediabunny y WebCodecs.
@@ -18,8 +34,15 @@ const videoExtensionPattern = /\.(mp4|m4v|mov|webm|mkv|ogv|ts)$/i
  */
 export async function optimizeVideo(
   file: File,
-  onProgress?: (progress: number) => void,
+  options: OptimizeVideoOptions = {},
 ): Promise<OptimizedVideo> {
+  const { signal, onProgress } = options
+  const throwIfAborted = (): void => {
+    if (signal?.aborted) {
+      throw abortError()
+    }
+  }
+
   if (!file.type.startsWith("video/") && !videoExtensionPattern.test(file.name)) {
     throw new Error("El archivo no es un vídeo")
   }
@@ -59,15 +82,28 @@ export async function optimizeVideo(
     formats: [MP4, QTFF, MATROSKA, OGG, MPEG_TS],
     source: new BlobSource(file),
   })
+  let conversion: Awaited<ReturnType<typeof Conversion.init>> | null = null
+  const abort = (): void => {
+    input.dispose()
+    void conversion?.cancel().catch(() => undefined)
+  }
+
+  signal?.addEventListener("abort", abort, { once: true })
 
   try {
+    throwIfAborted()
+
     const readable = await input.canRead().catch(() => false)
+
+    throwIfAborted()
 
     if (!readable) {
       throw new Error("El formato del vídeo no es compatible. Usa MP4, MOV, WebM, MKV, OGG o TS.")
     }
 
     const videoTrack = await input.getPrimaryVideoTrack()
+
+    throwIfAborted()
 
     if (!videoTrack) {
       throw new Error("El vídeo no contiene una pista de imagen")
@@ -77,8 +113,13 @@ export async function optimizeVideo(
       throw new Error("El navegador no puede decodificar este vídeo")
     }
 
+    throwIfAborted()
+
     const displayWidth = await videoTrack.getDisplayWidth()
     const displayHeight = await videoTrack.getDisplayHeight()
+
+    throwIfAborted()
+
     const scale = Math.min(1, MAX_VIDEO_DIMENSION / Math.max(displayWidth, displayHeight))
     const targetWidth = Math.max(2, Math.round(displayWidth * scale))
     const targetHeight = Math.max(2, Math.round(displayHeight * scale))
@@ -87,6 +128,8 @@ export async function optimizeVideo(
       width: targetWidth,
       height: targetHeight,
     })
+
+    throwIfAborted()
 
     if (!videoCodec) {
       throw new Error("Tu navegador no puede codificar vídeo WebM (VP9/VP8)")
@@ -97,12 +140,18 @@ export async function optimizeVideo(
       audioTrack && (await audioTrack.canDecode())
         ? await getFirstEncodableAudioCodec(["opus"])
         : null
+
+    throwIfAborted()
+
     const duration = await input.computeDuration()
+
+    throwIfAborted()
+
     const output = new Output({
       format: new WebMOutputFormat(),
       target: new BufferTarget(),
     })
-    const conversion = await Conversion.init({
+    conversion = await Conversion.init({
       input,
       output,
       tracks: "primary",
@@ -123,12 +172,20 @@ export async function optimizeVideo(
       tags: {},
     })
 
+    throwIfAborted()
+
     if (!conversion.isValid) {
       throw new Error("No se pudo preparar la conversión del vídeo a WebM")
     }
 
-    conversion.onProgress = (progress) => onProgress?.(progress)
+    conversion.onProgress = (progress) => {
+      if (!signal?.aborted) {
+        onProgress?.(progress)
+      }
+    }
     await conversion.execute()
+
+    throwIfAborted()
 
     const buffer = output.target.buffer
 
@@ -154,6 +211,7 @@ export async function optimizeVideo(
       duration,
     }
   } finally {
+    signal?.removeEventListener("abort", abort)
     input.dispose()
   }
 }
