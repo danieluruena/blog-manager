@@ -144,7 +144,7 @@ export function DashboardPage() {
                   <Link
                     key={article.id}
                     to={`/blogs/${article.blogId}/articles/${article.id}`}
-                    className="flex items-center gap-4 py-3 transition-colors first:pt-0 last:pb-0 hover:text-ink"
+                    className="flex min-w-0 items-center gap-4 py-3 transition-colors first:pt-0 last:pb-0 hover:text-ink"
                   >
                     <div className="relative aspect-video w-12 shrink-0 overflow-hidden rounded border border-line bg-surface-2">
                       {article.coverImage ? (
@@ -161,7 +161,9 @@ export function DashboardPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-ink">{article.title}</p>
+                      <p className="line-clamp-2 text-sm leading-snug font-medium text-ink">
+                        {article.title}
+                      </p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {article.blogName} · {formatDate(article.updatedAt)}
                       </p>

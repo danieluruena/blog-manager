@@ -336,8 +336,8 @@ export function ArticleForm({
           </Alert>
         ) : null}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-6">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 space-y-6">
             <Card className="border-line bg-surface">
               <CardContent className="space-y-5 px-5">
                 <FormField
@@ -458,7 +458,7 @@ export function ArticleForm({
             </Card>
           </div>
 
-          <div className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+          <div className="min-w-0 space-y-6 xl:sticky xl:top-24 xl:self-start">
             <Card className="border-line bg-surface">
               <CardHeader className="px-5">
                 <CardTitle className="text-base">Publicación</CardTitle>
@@ -511,7 +511,7 @@ export function ArticleForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Fecha de publicación</FormLabel>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                         <FormControl>
                           <Input type="datetime-local" className="min-w-0 flex-1" {...field} />
                         </FormControl>
@@ -519,6 +519,7 @@ export function ArticleForm({
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="self-start sm:self-auto"
                           onClick={() => field.onChange(nowDateTimeLocal())}
                         >
                           Ahora
