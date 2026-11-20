@@ -386,8 +386,8 @@ function Article({ article }: { article: PublicArticle }) {
 - Formato de imagen: **WebP**. Formato de vídeo: **WebM**.
 - Las URLs son absolutas y apuntan al Worker: `/media/:blogId/:filename`.
 - Puedes usarlas directamente en `src` de `img` o `video`; no necesitas proxy.
-- Caché de medios: `Cache-Control: public, max-age=31536000, immutable`, con `ETag` y `304` condicional.
-- Los vídeos admiten `Range`: se pueden reproducir y buscar sin descargar el archivo completo.
+- Caché de medios: `Cache-Control: public, max-age=31536000, immutable`, con `ETag` y `304` condicional. Las imágenes se cachean en el Worker (Cache API), de modo que las peticiones repetidas no vuelven a leer el almacenamiento.
+- Los vídeos admiten `Range`: se pueden reproducir y buscar sin descargar el archivo completo. Las respuestas con `Range` no se cachean.
 - Usa siempre las URLs que devuelve la API. No construyas ni reescribas las rutas de medios.
 - `coverImage` puede ser `null`; muestra un placeholder o simplemente omite la imagen.
 

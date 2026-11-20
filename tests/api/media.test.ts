@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { MAX_IMAGE_BYTES } from "../../src/server/lib/media"
+import { MAX_IMAGE_BYTES, mediaKey } from "../../src/server/lib/media"
 import {
   apiFetch,
   clearDatabase,
@@ -119,6 +119,31 @@ describe("media API", () => {
     )
 
     expect(cached.status).toBe(304)
+  })
+
+  it("sirve desde la caché de edge aunque el objeto de R2 ya no exista", async () => {
+    const { blog, adminCookie } = await setup()
+    const response = await apiFetch(uploadRequest(blog.id, imageFile(), adminCookie))
+
+    expect(response.status).toBe(201)
+
+    const body = (await response.json()) as { data: { filename: string; url: string } }
+    const url = body.data.url
+
+    const first = await apiFetch(new Request(url))
+    expect(first.status).toBe(200)
+
+    const bytes = new Uint8Array(await first.arrayBuffer())
+    expect(Array.from(bytes)).toEqual(Array.from(webpBytes()))
+
+    // Se borra el objeto de R2; la siguiente petición debe servirse desde caché.
+    await env.MEDIA.delete(mediaKey(blog.id, body.data.filename))
+
+    const second = await apiFetch(new Request(url))
+    expect(second.status).toBe(200)
+
+    const cachedBytes = new Uint8Array(await second.arrayBuffer())
+    expect(Array.from(cachedBytes)).toEqual(Array.from(webpBytes()))
   })
 
   it("rechaza imágenes que no sean WebP, contenido falsificado o vacío", async () => {

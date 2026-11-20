@@ -263,6 +263,7 @@ Notas operativas:
 - Cambiar un límite es editar `wrangler.jsonc` y desplegar. No hace falta migración.
 - No cambies el `namespace_id` sin necesidad: al cambiarlo, los contadores se reinician.
 - Los binding de Workers **no se ven en el dashboard**. Para monitorizar los `429`, usa `npx wrangler tail` o Workers Logs y filtra por `status: 429`.
+- Los medios se sirven además desde la **Cache API** del Worker (solo respuestas completas, sin `Range`), por lo que las peticiones repetidas a la misma imagen no generan lecturas de R2.
 - Los `429` de la API pública no se cachean (la respuesta de error no lleva `Cache-Control` público).
 - Este límite no sustituye a las reglas de rate limiting de Cloudflare por zona, que requieren un dominio propio.
 

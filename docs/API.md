@@ -378,6 +378,8 @@ Un vídeo devuelve el mismo DTO con `filename` y `url` terminados en `.webm` y `
 
 La entrega usa `Cache-Control: public, max-age=31536000, immutable`, `ETag` (responde `304` con `If-None-Match`), `Content-Type` del objeto, `Accept-Ranges: bytes` y `X-Content-Type-Options: nosniff`. Las peticiones `Range` responden `206` con `Content-Range`, lo que permite buscar dentro del vídeo.
 
+Las respuestas completas (imágenes sin `Range`) se guardan además en la **Cache API** del Worker: una petición repetida a la misma URL no vuelve a leer R2. Como las claves son UUID inmutables, es seguro cachearlas durante un año. Las respuestas con `Range` (vídeos) no se cachean.
+
 Cada subida genera un objeto y una fila propios. Al guardar el artículo, las imágenes y vídeos presentes en el documento, y la portada, quedan asociados a él; los que se han quitado se eliminan de R2 y D1. Un archivo pertenece a un único artículo: reutilizar la URL de otro artículo responde `409 MEDIA_IN_OTHER_ARTICLE`. Al eliminar un artículo se eliminan también sus archivos, incluida la portada, y al eliminar un blog sin artículos se limpian los que hayan quedado sin asignar.
 
 ### Estadísticas
