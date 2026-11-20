@@ -111,6 +111,7 @@ export async function updateArticleForBlog(
   articleId: string,
   input: ArticleUpdateInput,
   bucket: R2Bucket,
+  origin?: string,
 ): Promise<Article> {
   const article = await getArticleByBlogAndId(db, blogId, articleId)
 
@@ -177,7 +178,7 @@ export async function updateArticleForBlog(
   }
 
   if (mediaSync) {
-    await syncMediaSafely(bucket, db, blogId, article.id, mediaSync)
+    await syncMediaSafely(bucket, db, blogId, article.id, mediaSync, origin)
   }
 
   return updated
@@ -188,6 +189,7 @@ export async function deleteArticleForBlog(
   blogId: string,
   articleId: string,
   bucket: R2Bucket,
+  origin?: string,
 ): Promise<void> {
   const article = await getArticleByBlogAndId(db, blogId, articleId)
 
@@ -212,7 +214,7 @@ export async function deleteArticleForBlog(
 
   if (keysToDelete.length > 0) {
     try {
-      await deleteMediaObjects(bucket, keysToDelete)
+      await deleteMediaObjects(bucket, keysToDelete, origin)
       await deleteMediaByIds(
         db,
         unassignedMedia.map((item) => item.id),
@@ -229,9 +231,10 @@ async function syncMediaSafely(
   blogId: string,
   articleId: string,
   media: { assign: Media[]; keep: Media[] },
+  origin?: string,
 ): Promise<void> {
   try {
-    await syncArticleMedia(bucket, db, blogId, articleId, media)
+    await syncArticleMedia(bucket, db, blogId, articleId, media, origin)
   } catch (error) {
     console.error("No se pudieron sincronizar las imágenes del artículo", error)
   }
