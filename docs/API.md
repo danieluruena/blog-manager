@@ -406,6 +406,17 @@ No usa cookies. Solo devuelve blogs activos y artículos en estado `published` o
 
 > Manual de integración para las webs consumidoras: [`INTEGRACION.md`](INTEGRACION.md).
 
+### Límite de peticiones
+
+Cada IP tiene un límite de peticiones por minuto, aplicado por el Worker en cada ubicación de Cloudflare:
+
+| Rutas | Límite |
+|---|---|
+| `/api/public/v1/*` | 120 peticiones por minuto |
+| `/media/*` | 300 peticiones por minuto |
+
+Al superarlo responde `429 RATE_LIMITED` con cabecera `Retry-After: 60`. La IP se toma de `CF-Connecting-IP`, que Cloudflare fija en el borde. El contador es aproximado: en ráfagas puede superarse ligeramente el límite.
+
 | Método | Ruta                                                   | Descripción                        |
 | ------ | ------------------------------------------------------ | ---------------------------------- |
 | `GET`  | `/api/public/v1/blogs/:blogSlug`                       | Metadatos del blog                 |

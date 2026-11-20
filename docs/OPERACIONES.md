@@ -218,6 +218,7 @@ migración `0004` el dump incluye además `blog_permissions` y `users.is_approve
 - [x] Cookie `HttpOnly`, `SameSite=Strict`, `Secure` en HTTPS y `Path=/`.
 - [x] Contraseñas con HMAC-SHA256 + salt + `AUTH_PEPPER` (compatible con CPU gratuita).
 - [x] Rate limit de login: 5 intentos / 15 minutos por IP y email.
+- [x] Rate limit de la API pública (120/min por IP) y de los medios (300/min por IP) con el binding `ratelimits` de Workers.
 - [x] Errores de login genéricos y verificación de hash también para usuarios inexistentes.
 - [x] Revocación de sesiones al cambiar contraseña y al cerrar sesión; el cambio conserva la sesión actual.
 - [x] Registro público limitado por IP; las cuentas quedan pendientes de aprobación.
@@ -247,6 +248,24 @@ migración `0004` el dump incluye además `blog_permissions` y `users.is_approve
   asignar; se limpia al borrar el blog. Se puede añadir un cron en el futuro.
 - El borrado de un blog con artículos está bloqueado por diseño.
 
+## Límites de peticiones de la API pública
+
+Configurados en `wrangler.jsonc` (`ratelimits`):
+
+| Binding | Namespace | Límite | Aplica a |
+|---|---|---|---|
+| `PUBLIC_RATE_LIMITER` | `2001` | 120 / 60 s por IP | `/api/public/v1/*` |
+| `MEDIA_RATE_LIMITER` | `2002` | 300 / 60 s por IP | `/media/*` |
+
+Notas operativas:
+
+- El límite es **por ubicación de Cloudflare** y aproximado. No hay un límite global exacto.
+- Cambiar un límite es editar `wrangler.jsonc` y desplegar. No hace falta migración.
+- No cambies el `namespace_id` sin necesidad: al cambiarlo, los contadores se reinician.
+- Los binding de Workers **no se ven en el dashboard**. Para monitorizar los `429`, usa `npx wrangler tail` o Workers Logs y filtra por `status: 429`.
+- Los `429` de la API pública no se cachean (la respuesta de error no lleva `Cache-Control` público).
+- Este límite no sustituye a las reglas de rate limiting de Cloudflare por zona, que requieren un dominio propio.
+
 ## Incidentes
 
 | Síntoma                         | Acción                                                                 |
@@ -255,6 +274,7 @@ migración `0004` el dump incluye además `blog_permissions` y `users.is_approve
 | Login bloqueado                 | Esperar 15 min o limpiar `auth_attempts` del usuario.                  |
 | «Usuario pendiente de aprobación» | Aprobar la cuenta en `/users` y asignarle al menos un permiso.        |
 | Editor sin blogs visibles       | Revisar sus permisos en `/users`; un editor solo ve los asignados.     |
+| `429` en la API pública o medios | Ver el tráfico con `wrangler tail`; subir el límite en `wrangler.jsonc` si es legítimo. |
 | Sesión comprometida             | Borrar sesiones del usuario y cambiar la contraseña.                   |
 | `AUTH_PEPPER` comprometido      | Rotarlo invalida todos los hashes: crear administradores nuevos.       |
 | Imágenes no cargan              | Comprobar `GET /media/<blogId>/<archivo>` y el binding `MEDIA`.        |
