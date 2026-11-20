@@ -404,6 +404,8 @@ Cada subida genera un objeto y una fila propios. Al guardar el artículo, las im
 
 No usa cookies. Solo devuelve blogs activos y artículos en estado `published` o `featured`.
 
+> Manual de integración para las webs consumidoras: [`INTEGRACION.md`](INTEGRACION.md).
+
 | Método | Ruta                                                   | Descripción                        |
 | ------ | ------------------------------------------------------ | ---------------------------------- |
 | `GET`  | `/api/public/v1/blogs/:blogSlug`                       | Metadatos del blog                 |
