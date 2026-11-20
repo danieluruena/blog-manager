@@ -29,7 +29,7 @@ export function ArticlePreview({ variant, title, description, coverImage }: Arti
     return (
       <div className="rounded-lg border border-line bg-surface-2/40 p-2 sm:p-3">
         <div className="flex gap-2 sm:gap-3">
-          <div className="w-14 shrink-0 sm:w-24">
+          <div className="w-20 shrink-0 sm:w-36 min-[2000px]:w-56">
             <PreviewCover coverImage={coverImage} />
           </div>
           <div className="min-w-0 flex-1">

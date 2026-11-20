@@ -56,7 +56,7 @@ export function CoverImageField({
   }
 
   return (
-    <div>
+    <div className="max-w-2xl">
       <input
         ref={inputRef}
         type="file"
