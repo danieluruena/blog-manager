@@ -118,11 +118,13 @@ export function ArticleEditorPage() {
 
         <Card className="overflow-hidden border-line bg-surface py-0">
           <CardContent className="p-0">
-            <div
-              className="tiptap"
-              // El HTML lo genera el servidor con una lista blanca de nodos y estilos.
-              dangerouslySetInnerHTML={{ __html: currentArticle.body }}
-            />
+            <div className="mx-auto max-w-3xl">
+              <div
+                className="tiptap"
+                // El HTML lo genera el servidor con una lista blanca de nodos y estilos.
+                dangerouslySetInnerHTML={{ __html: currentArticle.body }}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>

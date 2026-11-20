@@ -110,7 +110,7 @@ export function AppShell() {
       >
         Saltar al contenido
       </a>
-      <div className="mx-auto flex min-h-screen max-w-[1600px]">
+      <div className="mx-auto flex min-h-screen max-w-[1600px] min-[2000px]:max-w-[2480px]">
         <aside className="hidden h-screen w-[264px] shrink-0 border-r border-line bg-surface/70 lg:sticky lg:top-0 lg:flex lg:flex-col">
           <SidebarContent
             user={user}
@@ -178,7 +178,7 @@ export function AppShell() {
           </header>
 
           <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
-            <div className="mx-auto w-full max-w-6xl">
+            <div className="mx-auto w-full max-w-[1440px] min-[2000px]:max-w-none">
               <Outlet />
             </div>
           </main>
