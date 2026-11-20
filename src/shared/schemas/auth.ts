@@ -21,13 +21,15 @@ export const registerSchema = z.object({
     .max(200, "La contraseña es demasiado larga"),
 })
 
-export const updateProfileSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "El nombre es obligatorio")
-    .max(120, "El nombre no puede superar los 120 caracteres"),
-})
+export const updateProfileSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "El nombre es obligatorio")
+      .max(120, "El nombre no puede superar los 120 caracteres"),
+  })
+  .strict()
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Introduce la contraseña actual"),

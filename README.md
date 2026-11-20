@@ -138,7 +138,7 @@ Remove-Item Env:ADMIN_PASSWORD
 - Los administradores tienen acceso completo a todos los blogs y a la gestión de usuarios; no necesitan filas de permisos.
 - Los editores solo ven los blogs asignados. Con `read` pueden consultar blogs y artículos; con `write` también crean, editan y borran artículos y suben media.
 - Retirar la aprobación o desactivar una cuenta invalida sus sesiones activas.
-- Todos los usuarios, incluido el administrador, tienen `/profile` para cambiar su nombre y contraseña. El cambio de contraseña exige la contraseña actual, mantiene la sesión actual y revoca las demás.
+- Todos los usuarios, incluido el administrador, tienen `/profile` para cambiar su nombre y contraseña. El email es único e inmutable: ni el propio usuario ni un administrador pueden cambiarlo, y un administrador tampoco puede cambiar el nombre de otro usuario. El cambio de contraseña exige la contraseña actual, mantiene la sesión actual y revoca las demás.
 
 Para crear los recursos remotos y desplegar sí necesitas autenticarte:
 

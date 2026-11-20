@@ -221,6 +221,7 @@ migración `0004` el dump incluye además `blog_permissions` y `users.is_approve
 - [x] Errores de login genéricos y verificación de hash también para usuarios inexistentes.
 - [x] Revocación de sesiones al cambiar contraseña y al cerrar sesión; el cambio conserva la sesión actual.
 - [x] Registro público limitado por IP; las cuentas quedan pendientes de aprobación.
+- [x] Email único e inmutable; el nombre solo lo cambia el propio usuario desde su perfil.
 - [x] Aprobación por administrador con al menos un permiso de blog; los no aprobados reciben «Usuario pendiente de aprobación».
 - [x] Permisos por blog (`read`/`write`) comprobados en cada ruta de blogs, artículos y media.
 - [x] `stats`, usuarios y ajustes de blog restringidos a administradores; no se puede eliminar/desactivar al último administrador.

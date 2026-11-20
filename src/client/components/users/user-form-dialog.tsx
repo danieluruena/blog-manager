@@ -110,22 +110,28 @@ export function UserFormDialog({
 
   async function onSubmit(values: UserFormValues): Promise<void> {
     const permissionsInput = values.role === "admin" ? [] : values.permissions
-    const base = {
-      name: values.name,
-      email: values.email,
-      role: values.role,
-      isActive: values.isActive,
-      isApproved: values.role === "admin" ? true : values.isApproved,
-      permissions: permissionsInput,
-    }
+    const isApprovedInput = values.role === "admin" ? true : values.isApproved
 
     try {
       if (user) {
-        const input: AdminUserUpdateInput = base
+        const input: AdminUserUpdateInput = {
+          role: values.role,
+          isActive: values.isActive,
+          isApproved: isApprovedInput,
+          permissions: permissionsInput,
+        }
         await updateUser.mutateAsync({ userId: user.id, input })
         toast.success("Usuario actualizado")
       } else {
-        const input: AdminUserCreateInput = { ...base, password: values.password }
+        const input: AdminUserCreateInput = {
+          name: values.name,
+          email: values.email,
+          password: values.password,
+          role: values.role,
+          isActive: values.isActive,
+          isApproved: isApprovedInput,
+          permissions: permissionsInput,
+        }
         await createUser.mutateAsync(input)
         toast.success("Usuario creado")
       }
@@ -155,7 +161,7 @@ export function UserFormDialog({
           <DialogTitle>{isEdit ? "Editar usuario" : "Nuevo usuario"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Actualiza los datos, el rol y los permisos por blog."
+              ? "Actualiza el rol, el estado y los permisos. El nombre y el email solo puede cambiarlos el propio usuario."
               : "Crea una cuenta y asigna permisos si la apruebas desde ahora."}
           </DialogDescription>
         </DialogHeader>
@@ -178,8 +184,18 @@ export function UserFormDialog({
                   <FormItem>
                     <FormLabel>Nombre</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre completo" {...field} />
+                      <Input
+                        placeholder="Nombre completo"
+                        readOnly={isEdit}
+                        className={isEdit ? "text-muted-foreground" : undefined}
+                        {...field}
+                      />
                     </FormControl>
+                    {isEdit ? (
+                      <FormDescription>
+                        Solo el propio usuario puede cambiar su nombre desde su perfil.
+                      </FormDescription>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -192,8 +208,17 @@ export function UserFormDialog({
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="usuario@email.com" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="usuario@email.com"
+                        readOnly={isEdit}
+                        className={isEdit ? "text-muted-foreground" : undefined}
+                        {...field}
+                      />
                     </FormControl>
+                    {isEdit ? (
+                      <FormDescription>El email no se puede editar.</FormDescription>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}

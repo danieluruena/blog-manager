@@ -30,14 +30,14 @@ export const adminUserCreateSchema = z.object({
   permissions: z.array(blogPermissionInputSchema).max(100).default([]),
 })
 
-export const adminUserUpdateSchema = z.object({
-  name: userNameSchema.optional(),
-  email: userEmailSchema.optional(),
-  role: z.enum(userRoleValues, { message: "Rol inválido" }).optional(),
-  isActive: z.boolean().optional(),
-  isApproved: z.boolean().optional(),
-  permissions: z.array(blogPermissionInputSchema).max(100).optional(),
-})
+export const adminUserUpdateSchema = z
+  .object({
+    role: z.enum(userRoleValues, { message: "Rol inválido" }).optional(),
+    isActive: z.boolean().optional(),
+    isApproved: z.boolean().optional(),
+    permissions: z.array(blogPermissionInputSchema).max(100).optional(),
+  })
+  .strict()
 
 export type BlogPermissionInput = z.infer<typeof blogPermissionInputSchema>
 export type AdminUserCreateInput = z.infer<typeof adminUserCreateSchema>

@@ -632,6 +632,7 @@ Permitir que cualquier persona solicite una cuenta, que un administrador la apru
 - `stats`, usuarios y ajustes de blog quedan restringidos a administradores.
 - Sesiones exigen `is_active` e `is_approved`; retirar la aprobación invalida sesiones activas.
 - El cambio de contraseña exige la actual y conserva la sesión actual.
+- El email es único e inmutable; el nombre solo lo cambia el propio usuario desde su perfil.
 
 ### Tareas
 
@@ -653,6 +654,7 @@ Permitir que cualquier persona solicite una cuenta, que un administrador la apru
 - Los permisos se pueden cambiar después y se aplican de inmediato.
 - Un editor solo ve sus blogs; con `read` no puede crear ni editar artículos.
 - Todos los roles pueden cambiar su nombre y contraseña; la contraseña exige la actual.
+- El email no se puede editar desde ningún endpoint; un administrador no puede cambiar el nombre de otro usuario.
 - `typecheck`, `lint`, `test`, `build`, `format:check` y `audit` pasan.
 
 ---

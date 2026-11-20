@@ -189,7 +189,6 @@ describe("gestión de usuarios", () => {
         method: "PATCH",
         cookie: adminCookie,
         body: {
-          name: "Editor Actualizado",
           isApproved: true,
           permissions: [{ blogId: blog.id, permission: "write" }],
         },
@@ -200,11 +199,13 @@ describe("gestión de usuarios", () => {
     const updated = (await update.json()) as {
       data: {
         name: string
+        email: string
         isApproved: boolean
         permissions: Array<{ blogId: string; permission: string }>
       }
     }
-    expect(updated.data.name).toBe("Editor Actualizado")
+    expect(updated.data.name).toBe("Editor Nuevo")
+    expect(updated.data.email).toBe("editor.nuevo@example.com")
     expect(updated.data.isApproved).toBe(true)
     expect(updated.data.permissions[0]).toMatchObject({
       blogId: blog.id,
@@ -226,6 +227,41 @@ describe("gestión de usuarios", () => {
     const listAfter = await apiFetch(jsonRequest("/api/admin/users", { cookie: adminCookie }))
     const listAfterBody = (await listAfter.json()) as { data: Array<{ email: string }> }
     expect(listAfterBody.data.some((user) => user.email === "editor.nuevo@example.com")).toBe(false)
+  })
+
+  it("no permite editar el nombre ni el email desde la gestión de usuarios", async () => {
+    const { cookie: adminCookie } = await setupAdmin()
+    const user = await createTestUser({
+      email: "inmutable@example.com",
+      name: "Nombre Original",
+      role: "editor",
+    })
+
+    for (const body of [{ name: "Nombre Nuevo" }, { email: "otro@example.com" }]) {
+      const response = await apiFetch(
+        jsonRequest(`/api/admin/users/${user.id}`, {
+          method: "PATCH",
+          cookie: adminCookie,
+          body,
+        }),
+      )
+
+      expect(response.status).toBe(400)
+      expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
+        "VALIDATION_ERROR",
+      )
+    }
+
+    const list = await apiFetch(jsonRequest("/api/admin/users", { cookie: adminCookie }))
+    const listBody = (await list.json()) as {
+      data: Array<{ id: string; name: string; email: string }>
+    }
+    const target = listBody.data.find((item) => item.id === user.id)
+
+    expect(target).toMatchObject({
+      name: "Nombre Original",
+      email: "inmutable@example.com",
+    })
   })
 
   it("impide que un administrador se elimine, se desactive o se quite el rol", async () => {
@@ -374,6 +410,27 @@ describe("perfil", () => {
     expect(((await profile.json()) as { data: { user: { name: string } } }).data.user.name).toBe(
       "Nombre Nuevo",
     )
+
+    const emailChange = await apiFetch(
+      jsonRequest("/api/auth/profile", {
+        method: "PATCH",
+        cookie,
+        body: { name: "Otro Nombre", email: "otro@example.com" },
+      }),
+    )
+    expect(emailChange.status).toBe(400)
+    expect(((await emailChange.json()) as { error: { code: string } }).error.code).toBe(
+      "VALIDATION_ERROR",
+    )
+
+    const meAfterProfile = await apiFetch(jsonRequest("/api/auth/me", { cookie }))
+    const meAfterProfileBody = (await meAfterProfile.json()) as {
+      data: { user: { name: string; email: string } }
+    }
+    expect(meAfterProfileBody.data.user).toMatchObject({
+      name: "Nombre Nuevo",
+      email: "perfil@example.com",
+    })
 
     const wrong = await apiFetch(
       jsonRequest("/api/auth/password", {

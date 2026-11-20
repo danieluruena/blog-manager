@@ -142,7 +142,7 @@ Cierra la sesión actual y borra la cookie. Responde `204`.
 }
 ```
 
-Requiere cookie. Actualiza el nombre del usuario autenticado y devuelve el usuario actualizado.
+Requiere cookie. Actualiza el nombre del usuario autenticado y devuelve el usuario actualizado. El email es inmutable: enviarlo responde `400 VALIDATION_ERROR`.
 
 ### `PATCH /api/auth/password`
 
@@ -189,7 +189,7 @@ Solo `admin`.
 | -------- | ------------------------- | -------------------------------------------------- |
 | `GET`    | `/api/admin/users`        | Lista usuarios con sus permisos por blog           |
 | `POST`   | `/api/admin/users`        | Crea un usuario                                    |
-| `PATCH`  | `/api/admin/users/:id`    | Actualiza datos, rol, estado, aprobación y permisos |
+| `PATCH`  | `/api/admin/users/:id`    | Actualiza rol, estado, aprobación y permisos        |
 | `DELETE` | `/api/admin/users/:id`    | Elimina el usuario y sus sesiones/permisos         |
 
 Crear usuario:
@@ -208,6 +208,8 @@ Crear usuario:
 
 Reglas:
 
+- El **email es inmutable** y **único**. Solo se indica al crear la cuenta; no se puede cambiar desde la API, ni por el propio usuario.
+- El **nombre** solo lo puede cambiar el propio usuario desde `PATCH /api/auth/profile`. Un administrador no puede editar el nombre de otros usuarios.
 - Un usuario aprobado con rol `editor` debe tener **al menos un permiso**; si no, responde `400 APPROVAL_REQUIRES_PERMISSION`.
 - Los `admin` se aprueban automáticamente y no necesitan permisos.
 - Los permisos se reemplazan completos con el array `permissions` (hasta 100 blogs); `read` o `write`.

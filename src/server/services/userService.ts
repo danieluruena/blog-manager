@@ -198,17 +198,7 @@ export async function updateAdminUser(
     }
   }
 
-  if (
-    input.email &&
-    input.email.trim().toLowerCase() !== user.email &&
-    (await findUserByEmail(db, input.email))
-  ) {
-    throw new ApiError(409, "EMAIL_IN_USE", "Ya existe una cuenta con ese email")
-  }
-
   const updated = await updateUser(db, userId, {
-    ...(input.name !== undefined ? { name: input.name } : {}),
-    ...(input.email !== undefined ? { email: input.email } : {}),
     ...(input.role !== undefined ? { role: input.role } : {}),
     ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
     ...(input.isApproved !== undefined || role === "admin" ? { isApproved } : {}),

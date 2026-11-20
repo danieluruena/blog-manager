@@ -368,8 +368,8 @@ CREATE TABLE media (
 | Campo | Tipo | Regla |
 |---|---|---|
 | `id` | UUID | Generado en el servidor. |
-| `email` | string | Único global, minúsculas, formato de email válido. |
-| `name` | string | 1–120 caracteres. |
+| `email` | string | Único global, minúsculas, formato de email válido. **Inmutable**: solo se indica al crear la cuenta. |
+| `name` | string | 1–120 caracteres. Solo el propio usuario puede cambiarlo desde su perfil. |
 | `password_hash` | string | HMAC-SHA256 con pepper y salt por usuario (`hmac-sha256$1$salt$hash`). El pepper vive en un secret del Worker, no en D1. Nunca se devuelve en la API. |
 | `role` | enum | `admin` o `editor`. Los administradores tienen acceso completo; los editores dependen de `blog_permissions`. |
 | `is_active` | boolean | Un usuario desactivado no puede iniciar sesión. |
@@ -524,7 +524,7 @@ Ejemplo de bloqueo de borrado:
 |---|---|---|
 | `GET` | `/api/admin/users` | Lista usuarios con sus permisos por blog. Solo `admin`. |
 | `POST` | `/api/admin/users` | Crea un usuario. Solo `admin`. |
-| `PATCH` | `/api/admin/users/:userId` | Cambia nombre, email, rol, estado, aprobación y permisos. Solo `admin`. |
+| `PATCH` | `/api/admin/users/:userId` | Cambia rol, estado, aprobación y permisos. Nombre y email son inmutables. Solo `admin`. |
 | `DELETE` | `/api/admin/users/:userId` | Elimina usuario, sus sesiones y permisos. Solo `admin`. |
 
 Roles:
@@ -534,6 +534,7 @@ Roles:
 
 Reglas de aprobación y seguridad:
 
+- El email es único e inmutable; el nombre solo lo cambia el propio usuario desde `/profile`.
 - Un editor aprobado debe tener al menos un permiso (`APPROVAL_REQUIRES_PERMISSION`).
 - La sesión exige `is_active = true` e `is_approved = true`; retirar cualquiera de las dos invalida las sesiones activas.
 - El administrador no puede eliminarse, desactivarse ni quitarse el rol; siempre debe quedar al menos un administrador activo.
