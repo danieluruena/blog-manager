@@ -746,7 +746,9 @@ export function TiptapEditor({
           </ToolbarButton>
         </div>
 
-        <EditorContent editor={editor} />
+        <div className="max-h-[32rem] overflow-y-auto">
+          <EditorContent editor={editor} />
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-xs text-muted-foreground">
           <span>
