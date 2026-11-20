@@ -184,18 +184,8 @@ export function UserFormDialog({
                   <FormItem>
                     <FormLabel>Nombre</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Nombre completo"
-                        readOnly={isEdit}
-                        className={isEdit ? "text-muted-foreground" : undefined}
-                        {...field}
-                      />
+                      <Input placeholder="Nombre completo" disabled={isEdit} {...field} />
                     </FormControl>
-                    {isEdit ? (
-                      <FormDescription>
-                        Solo el propio usuario puede cambiar su nombre desde su perfil.
-                      </FormDescription>
-                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -211,14 +201,10 @@ export function UserFormDialog({
                       <Input
                         type="email"
                         placeholder="usuario@email.com"
-                        readOnly={isEdit}
-                        className={isEdit ? "text-muted-foreground" : undefined}
+                        disabled={isEdit}
                         {...field}
                       />
                     </FormControl>
-                    {isEdit ? (
-                      <FormDescription>El email no se puede editar.</FormDescription>
-                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
