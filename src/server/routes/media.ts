@@ -58,8 +58,28 @@ mediaRoutes.get("/:blogId/:filename", async (c) => {
     return notFound()
   }
 
-  let object: R2ObjectBody | null
   const rangeHeader = c.req.header("range")
+
+  // Las respuestas con Range no se cachean: son fragmentos y no sirven para el resto.
+  if (!rangeHeader) {
+    const cacheKey = new Request(c.req.url)
+    const cached = await caches.default.match(cacheKey)
+
+    if (cached) {
+      const etag = cached.headers.get("etag")
+
+      if (etag && c.req.header("if-none-match") === etag) {
+        return new Response(null, {
+          status: 304,
+          headers: { etag, "accept-ranges": "bytes" },
+        })
+      }
+
+      return cached
+    }
+  }
+
+  let object: R2ObjectBody | null
 
   try {
     object = await c.env.MEDIA.get(
@@ -119,7 +139,13 @@ mediaRoutes.get("/:blogId/:filename", async (c) => {
 
   headers.set("content-length", String(object.size))
 
-  return new Response(object.body, { headers })
+  const response = new Response(object.body, { headers })
+
+  // Solo se cachean las respuestas completas (imágenes, sin Range). Los objetos son
+  // inmutables (clave UUID), así que es seguro servirlos desde caché durante un año.
+  await caches.default.put(new Request(c.req.url), response.clone())
+
+  return response
 })
 
 export { mediaRoutes }

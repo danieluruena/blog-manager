@@ -96,6 +96,7 @@ export async function deleteBlogMedia(
   db: Database,
   blogId: string,
   mediaId: string,
+  origin?: string,
 ): Promise<void> {
   const item = await findMediaById(db, blogId, mediaId)
 
@@ -105,12 +106,38 @@ export async function deleteBlogMedia(
 
   await bucket.delete(item.r2Key)
   await deleteMediaById(db, item.id)
+
+  if (origin) {
+    await purgeMediaCache(origin, [item.r2Key])
+  }
 }
 
-export async function deleteMediaObjects(bucket: R2Bucket, keys: string[]): Promise<void> {
+export async function deleteMediaObjects(
+  bucket: R2Bucket,
+  keys: string[],
+  origin?: string,
+): Promise<void> {
   for (let index = 0; index < keys.length; index += 1000) {
     await bucket.delete(keys.slice(index, index + 1000))
   }
+
+  if (origin) {
+    await purgeMediaCache(origin, keys)
+  }
+}
+
+/**
+ * Invalida las entradas de la Cache API de los medios borrados de R2. La URL
+ * pública se deriva de la clave (`blogs/<blogId>/<filename>` → `/media/<blogId>/<filename>`).
+ */
+async function purgeMediaCache(origin: string, keys: string[]): Promise<void> {
+  await Promise.all(
+    keys.map((key) => {
+      const path = key.startsWith("blogs/") ? key.slice("blogs/".length) : key
+
+      return caches.default.delete(new URL(`/media/${path}`, origin).toString())
+    }),
+  )
 }
 
 /**
@@ -167,6 +194,7 @@ export async function syncArticleMedia(
   blogId: string,
   articleId: string,
   media: { assign: Media[]; keep: Media[] },
+  origin?: string,
 ): Promise<void> {
   const assignIds = new Set(media.assign.map((item) => item.id))
   const keepIds = new Set(media.keep.map((item) => item.id))
@@ -183,6 +211,7 @@ export async function syncArticleMedia(
   await deleteMediaObjects(
     bucket,
     removed.map((item) => item.r2Key),
+    origin,
   )
   await deleteMediaByIds(
     db,

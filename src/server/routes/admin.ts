@@ -104,7 +104,7 @@ adminRoutes.delete("/blogs/:blogId", requireAdmin, async (c) => {
   await deleteBlogOrThrow(db, blog.id)
 
   if (mediaKeys.length > 0) {
-    c.executionCtx.waitUntil(deleteMediaObjects(c.env.MEDIA, mediaKeys))
+    c.executionCtx.waitUntil(deleteMediaObjects(c.env.MEDIA, mediaKeys, new URL(c.req.url).origin))
   }
 
   return c.body(null, 204)
@@ -161,6 +161,7 @@ adminRoutes.patch("/blogs/:blogId/articles/:articleId", async (c) => {
     c.req.param("articleId"),
     input,
     c.env.MEDIA,
+    new URL(c.req.url).origin,
   )
 
   return c.json({ data: toArticleDto(article) })
@@ -171,7 +172,13 @@ adminRoutes.delete("/blogs/:blogId/articles/:articleId", async (c) => {
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
   await requireBlogPermission(db, c.get("user"), blog.id, "write")
 
-  await deleteArticleForBlog(db, blog.id, c.req.param("articleId"), c.env.MEDIA)
+  await deleteArticleForBlog(
+    db,
+    blog.id,
+    c.req.param("articleId"),
+    c.env.MEDIA,
+    new URL(c.req.url).origin,
+  )
 
   return c.body(null, 204)
 })
@@ -203,7 +210,7 @@ adminRoutes.delete("/blogs/:blogId/media/:mediaId", requireAdmin, async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
 
-  await deleteBlogMedia(c.env.MEDIA, db, blog.id, c.req.param("mediaId"))
+  await deleteBlogMedia(c.env.MEDIA, db, blog.id, c.req.param("mediaId"), new URL(c.req.url).origin)
 
   return c.body(null, 204)
 })

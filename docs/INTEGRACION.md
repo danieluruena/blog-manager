@@ -386,8 +386,8 @@ function Article({ article }: { article: PublicArticle }) {
 - Formato de imagen: **WebP**. Formato de vídeo: **WebM**.
 - Las URLs son absolutas y apuntan al Worker: `/media/:blogId/:filename`.
 - Puedes usarlas directamente en `src` de `img` o `video`; no necesitas proxy.
-- Caché de medios: `Cache-Control: public, max-age=31536000, immutable`, con `ETag` y `304` condicional.
-- Los vídeos admiten `Range`: se pueden reproducir y buscar sin descargar el archivo completo.
+- Caché de medios: `Cache-Control: public, max-age=31536000, immutable`, con `ETag` y `304` condicional. Las imágenes se cachean en el Worker (Cache API), de modo que las peticiones repetidas no vuelven a leer el almacenamiento.
+- Los vídeos admiten `Range`: se pueden reproducir y buscar sin descargar el archivo completo. Las respuestas con `Range` no se cachean.
 - Usa siempre las URLs que devuelve la API. No construyas ni reescribas las rutas de medios.
 - `coverImage` puede ser `null`; muestra un placeholder o simplemente omite la imagen.
 
@@ -487,14 +487,26 @@ Formato uniforme:
 | `400` | `VALIDATION_ERROR` | `limit` fuera de 1–50, `featured` no booleano, parámetros inválidos |
 | `400` | `INVALID_CURSOR` | Cursor corrupto o manipulado |
 | `404` | `NOT_FOUND` | Blog inactivo/inexistente o artículo no visible |
+| `429` | `RATE_LIMITED` | Más de 120 peticiones por minuto desde tu IP (ver §12.1) |
 | `500` | `INTERNAL` | Error interno; incluye `requestId` para soporte |
 
 Recomendaciones:
 
 - Trata `404` como «no existe o no es visible», sin distinguir.
 - No reintentes automáticamente un `400`.
+- Ante un `429`, espera el tiempo de `Retry-After` (60 s) antes de volver a llamar.
 - Para `5xx`, aplica reintentos con backoff exponencial y un límite.
 - Guarda el `requestId` si necesitas reportar un problema.
+
+### 12.1. Límite de peticiones
+
+La API pública permite **120 peticiones por minuto por IP** y los medios **300 por minuto**. Una web con tráfico normal no debería alcanzarlo si cachea las respuestas. Para evitarlo:
+
+- cachea el listado y los detalles en tu servidor o CDN en lugar de pedirlos en cada visita;
+- reutiliza las URLs de medios: el navegador las cachea un año;
+- no hagas polling de todos los artículos; consulta el listado con una frecuencia razonable.
+
+Si tu sitio provoca `429` de forma legítima, avisa al administrador del panel para revisar el límite.
 
 ---
 
