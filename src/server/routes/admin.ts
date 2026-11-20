@@ -1,4 +1,6 @@
 import {
+  adminUserCreateSchema,
+  adminUserUpdateSchema,
   articleCreateSchema,
   articleListQuerySchema,
   articleUpdateSchema,
@@ -34,7 +36,14 @@ import {
   getBlogOrThrow,
   updateBlogFromInput,
 } from "../services/blogService"
-import { deleteBlogImage, deleteMediaObjects, storeImage } from "../services/mediaService"
+import { deleteBlogMedia, deleteMediaObjects, storeMedia } from "../services/mediaService"
+import { requireBlogPermission } from "../services/permissionService"
+import {
+  createAdminUser,
+  deleteAdminUser,
+  listAdminUsers,
+  updateAdminUser,
+} from "../services/userService"
 import type { AppEnv } from "../types"
 
 const adminRoutes = new Hono<AppEnv>()
@@ -44,10 +53,16 @@ adminRoutes.use("*", requireAuth)
 adminRoutes.get("/blogs", async (c) => {
   const query = parseQuery(c, blogListQuerySchema)
   const db = getDb(c.env)
-  const result = await listBlogs(db, query)
+  const user = c.get("user")
+  const result = await listBlogs(db, {
+    ...query,
+    userId: user.role === "admin" ? undefined : user.id,
+  })
 
   return c.json({
-    data: result.items.map((blog) => toBlogDto(blog)),
+    data: result.items.map((blog) =>
+      toBlogDto(blog, blog.articleCount, blog.permission ?? "write"),
+    ),
     meta: {
       page: result.page,
       pageSize: result.pageSize,
@@ -66,9 +81,10 @@ adminRoutes.post("/blogs", requireAdmin, async (c) => {
 adminRoutes.get("/blogs/:blogId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  const permission = await requireBlogPermission(db, c.get("user"), blog.id, "read")
   const articleCount = await countArticlesForBlog(db, blog.id)
 
-  return c.json({ data: toBlogDto(blog, articleCount) })
+  return c.json({ data: toBlogDto(blog, articleCount, permission) })
 })
 
 adminRoutes.patch("/blogs/:blogId", requireAdmin, async (c) => {
@@ -97,6 +113,7 @@ adminRoutes.delete("/blogs/:blogId", requireAdmin, async (c) => {
 adminRoutes.get("/blogs/:blogId/articles", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  await requireBlogPermission(db, c.get("user"), blog.id, "read")
   const query = parseQuery(c, articleListQuerySchema)
   const result = await listArticlesByBlog(db, blog.id, query)
 
@@ -113,6 +130,7 @@ adminRoutes.get("/blogs/:blogId/articles", async (c) => {
 adminRoutes.post("/blogs/:blogId/articles", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  await requireBlogPermission(db, c.get("user"), blog.id, "write")
   const input = await parseJson(c, articleCreateSchema)
   const article = await createArticleForBlog(db, blog.id, input, c.env.MEDIA)
 
@@ -122,6 +140,7 @@ adminRoutes.post("/blogs/:blogId/articles", async (c) => {
 adminRoutes.get("/blogs/:blogId/articles/:articleId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  await requireBlogPermission(db, c.get("user"), blog.id, "read")
   const article = await getArticleByBlogAndId(db, blog.id, c.req.param("articleId"))
 
   if (!article) {
@@ -134,6 +153,7 @@ adminRoutes.get("/blogs/:blogId/articles/:articleId", async (c) => {
 adminRoutes.patch("/blogs/:blogId/articles/:articleId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  await requireBlogPermission(db, c.get("user"), blog.id, "write")
   const input = await parseJson(c, articleUpdateSchema)
   const article = await updateArticleForBlog(
     db,
@@ -149,6 +169,7 @@ adminRoutes.patch("/blogs/:blogId/articles/:articleId", async (c) => {
 adminRoutes.delete("/blogs/:blogId/articles/:articleId", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  await requireBlogPermission(db, c.get("user"), blog.id, "write")
 
   await deleteArticleForBlog(db, blog.id, c.req.param("articleId"), c.env.MEDIA)
 
@@ -158,6 +179,7 @@ adminRoutes.delete("/blogs/:blogId/articles/:articleId", async (c) => {
 adminRoutes.post("/blogs/:blogId/media", async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
+  await requireBlogPermission(db, c.get("user"), blog.id, "write")
   let form: FormData
 
   try {
@@ -169,10 +191,10 @@ adminRoutes.post("/blogs/:blogId/media", async (c) => {
   const file = form.get("file")
 
   if (!(file instanceof File)) {
-    throw new ApiError(400, "FILE_REQUIRED", "Adjunta una imagen en el campo «file»")
+    throw new ApiError(400, "FILE_REQUIRED", "Adjunta un archivo en el campo «file»")
   }
 
-  const media = await storeImage(c.env.MEDIA, db, blog.id, file)
+  const media = await storeMedia(c.env.MEDIA, db, blog.id, file)
 
   return c.json({ data: toMediaDto(media, new URL(c.req.url).origin) }, 201)
 })
@@ -181,12 +203,38 @@ adminRoutes.delete("/blogs/:blogId/media/:mediaId", requireAdmin, async (c) => {
   const db = getDb(c.env)
   const blog = await getBlogOrThrow(db, c.req.param("blogId"))
 
-  await deleteBlogImage(c.env.MEDIA, db, blog.id, c.req.param("mediaId"))
+  await deleteBlogMedia(c.env.MEDIA, db, blog.id, c.req.param("mediaId"))
 
   return c.body(null, 204)
 })
 
-adminRoutes.get("/stats", async (c) => {
+adminRoutes.get("/users", requireAdmin, async (c) => {
+  const users = await listAdminUsers(getDb(c.env))
+
+  return c.json({ data: users })
+})
+
+adminRoutes.post("/users", requireAdmin, async (c) => {
+  const input = await parseJson(c, adminUserCreateSchema)
+  const user = await createAdminUser(getDb(c.env), input, c.env.AUTH_PEPPER)
+
+  return c.json({ data: user }, 201)
+})
+
+adminRoutes.patch("/users/:userId", requireAdmin, async (c) => {
+  const input = await parseJson(c, adminUserUpdateSchema)
+  const user = await updateAdminUser(getDb(c.env), c.get("user").id, c.req.param("userId"), input)
+
+  return c.json({ data: user })
+})
+
+adminRoutes.delete("/users/:userId", requireAdmin, async (c) => {
+  await deleteAdminUser(getDb(c.env), c.get("user").id, c.req.param("userId"))
+
+  return c.body(null, 204)
+})
+
+adminRoutes.get("/stats", requireAdmin, async (c) => {
   const db = getDb(c.env)
   const [stats, recentArticles] = await Promise.all([
     getDashboardStats(db),

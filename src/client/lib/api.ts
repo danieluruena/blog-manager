@@ -1,13 +1,18 @@
 import type {
+  AdminUserCreateInput,
+  AdminUserUpdateInput,
   ArticleCreateInput,
   ArticleUpdateInput,
   BlogCreateInput,
   BlogUpdateInput,
   ChangePasswordInput,
   LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
 } from "@shared/schemas"
 import type { ArticleStatus } from "@shared/constants"
 import type {
+  AdminUserDto,
   ApiErrorResponse,
   ArticleDto,
   ArticleSummaryDto,
@@ -17,6 +22,7 @@ import type {
   MediaDto,
   MeResponse,
   PaginatedResponse,
+  RegisterResponse,
   StatsDto,
 } from "@shared/types"
 
@@ -111,6 +117,13 @@ export const api = {
     })
   },
 
+  register(input: RegisterInput): Promise<RegisterResponse> {
+    return request<RegisterResponse>("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify(input),
+    })
+  },
+
   logout(): Promise<void> {
     return request<void>("/api/auth/logout", { method: "POST" })
   },
@@ -119,11 +132,40 @@ export const api = {
     return request<MeResponse>("/api/auth/me")
   },
 
+  updateProfile(input: UpdateProfileInput): Promise<MeResponse> {
+    return request<MeResponse>("/api/auth/profile", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    })
+  },
+
   changePassword(input: ChangePasswordInput): Promise<void> {
     return request<void>("/api/auth/password", {
       method: "PATCH",
       body: JSON.stringify(input),
     })
+  },
+
+  listUsers(): Promise<DataResponse<AdminUserDto[]>> {
+    return request<DataResponse<AdminUserDto[]>>("/api/admin/users")
+  },
+
+  createUser(input: AdminUserCreateInput): Promise<DataResponse<AdminUserDto>> {
+    return request<DataResponse<AdminUserDto>>("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    })
+  },
+
+  updateUser(userId: string, input: AdminUserUpdateInput): Promise<DataResponse<AdminUserDto>> {
+    return request<DataResponse<AdminUserDto>>(`/api/admin/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    })
+  },
+
+  deleteUser(userId: string): Promise<void> {
+    return request<void>(`/api/admin/users/${userId}`, { method: "DELETE" })
   },
 
   getStats(): Promise<DataResponse<StatsDto>> {
@@ -193,7 +235,7 @@ export const api = {
     })
   },
 
-  uploadImage(blogId: string, file: File): Promise<DataResponse<MediaDto>> {
+  uploadMedia(blogId: string, file: File): Promise<DataResponse<MediaDto>> {
     const body = new FormData()
     body.set("file", file)
 

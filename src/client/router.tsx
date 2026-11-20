@@ -11,11 +11,20 @@ const AppShell = lazy(() =>
 const LoginPage = lazy(() =>
   import("./pages/login").then((module) => ({ default: module.LoginPage })),
 )
+const RegisterPage = lazy(() =>
+  import("./pages/register").then((module) => ({ default: module.RegisterPage })),
+)
 const DashboardPage = lazy(() =>
   import("./pages/dashboard").then((module) => ({ default: module.DashboardPage })),
 )
 const BlogsPage = lazy(() =>
   import("./pages/blogs").then((module) => ({ default: module.BlogsPage })),
+)
+const UsersPage = lazy(() =>
+  import("./pages/users").then((module) => ({ default: module.UsersPage })),
+)
+const ProfilePage = lazy(() =>
+  import("./pages/profile").then((module) => ({ default: module.ProfilePage })),
 )
 const BlogArticlesPage = lazy(() =>
   import("./pages/blog-articles").then((module) => ({ default: module.BlogArticlesPage })),
@@ -34,6 +43,11 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
   },
   {
+    path: "/register",
+    element: <RegisterPage />,
+    errorElement: <RouteErrorPage />,
+  },
+  {
     path: "/",
     element: <ProtectedRoute />,
     errorElement: <RouteErrorPage />,
@@ -48,6 +62,8 @@ export const router = createBrowserRouter([
           { path: "blogs/:blogId/articles/new", element: <ArticleEditorPage /> },
           { path: "blogs/:blogId/articles/:articleId", element: <ArticleEditorPage /> },
           { path: "blogs/:blogId/settings", element: <BlogSettingsPage /> },
+          { path: "users", element: <UsersPage /> },
+          { path: "profile", element: <ProfilePage /> },
           { path: "*", element: <NotFoundPage /> },
         ],
       },

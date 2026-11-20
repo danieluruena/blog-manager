@@ -4,6 +4,8 @@ import { TextAlign } from "@tiptap/extension-text-align"
 import { TextStyleKit } from "@tiptap/extension-text-style"
 import { StarterKit } from "@tiptap/starter-kit"
 
+import { Video } from "./video"
+
 /** Extensiones compartidas por el editor y el renderizador de HTML. */
 export const articleExtensions = [
   StarterKit.configure({
@@ -14,6 +16,7 @@ export const articleExtensions = [
   TextAlign.configure({ types: ["heading", "paragraph"] }),
   Highlight.configure({ multicolor: true }),
   Image,
+  Video,
 ]
 
 export const EMPTY_RICH_TEXT_JSON = JSON.stringify({

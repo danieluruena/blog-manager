@@ -225,6 +225,7 @@ describe("usersRepository y sessionsRepository", () => {
       passwordHash: "test-hash",
       role: "admin",
       isActive: true,
+      isApproved: true,
       createdAt: BASE_TIME,
       updatedAt: BASE_TIME,
     })
@@ -251,6 +252,16 @@ describe("usersRepository y sessionsRepository", () => {
     ).resolves.toBeNull()
 
     await updateUser(db, user.id, { isActive: false, updatedAt: BASE_TIME })
+
+    await expect(
+      findValidSessionByTokenHash(db, "session-hash", "2026-11-18T10:00:00.000Z"),
+    ).resolves.toBeNull()
+
+    await updateUser(db, user.id, {
+      isActive: true,
+      isApproved: false,
+      updatedAt: BASE_TIME,
+    })
 
     await expect(
       findValidSessionByTokenHash(db, "session-hash", "2026-11-18T10:00:00.000Z"),

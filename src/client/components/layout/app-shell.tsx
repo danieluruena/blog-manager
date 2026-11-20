@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Menu } from "lucide-react"
+import { ChevronDown, LogOut, Menu, User } from "lucide-react"
 import { Fragment, useState } from "react"
 import { Link, Outlet, useLocation } from "react-router"
 
@@ -162,6 +162,12 @@ export function AppShell() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile">
+                      <User className="size-4" />
+                      Mi perfil
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => logout.mutate()} disabled={logout.isPending}>
                     <LogOut className="size-4" />
                     Cerrar sesión

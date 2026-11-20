@@ -7,6 +7,7 @@ import {
   clearDatabase,
   createTestBlog,
   createTestUser,
+  grantBlogPermission,
   jsonRequest,
   loginAs,
 } from "./helpers"
@@ -58,6 +59,7 @@ async function setup() {
   const adminCookie = (await loginAs(admin)).cookie
   const editorCookie = (await loginAs(editor)).cookie
   const blog = await createTestBlog()
+  await grantBlogPermission(editor.id, blog.id, "write")
 
   return { blog, adminCookie, editorCookie }
 }
@@ -68,7 +70,7 @@ beforeEach(async () => {
 })
 
 describe("media API", () => {
-  it("exige autenticación para subir imágenes", async () => {
+  it("exige autenticación para subir archivos", async () => {
     const blog = await createTestBlog()
     const response = await apiFetch(uploadRequest(blog.id, imageFile(), null))
 
@@ -119,7 +121,7 @@ describe("media API", () => {
     expect(cached.status).toBe(304)
   })
 
-  it("solo acepta WebP y rechaza contenido falsificado o vacío", async () => {
+  it("rechaza imágenes que no sean WebP, contenido falsificado o vacío", async () => {
     const { blog, adminCookie } = await setup()
 
     const textFile = new File(["hola"], "nota.txt", { type: "text/plain" })

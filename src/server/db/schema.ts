@@ -1,13 +1,23 @@
 import { sql } from "drizzle-orm"
-import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import {
+  check,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core"
 
-import { articleStatusValues, userRoleValues } from "../../shared/constants"
+import { articleStatusValues, userRoleValues, blogPermissionValues } from "../../shared/constants"
 
 export {
   articleStatusValues,
   userRoleValues,
+  blogPermissionValues,
   type ArticleStatus,
   type UserRole,
+  type BlogPermission,
 } from "../../shared/constants"
 
 export const users = sqliteTable(
@@ -19,12 +29,14 @@ export const users = sqliteTable(
     passwordHash: text("password_hash").notNull(),
     role: text("role", { enum: userRoleValues }).notNull().default("admin"),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    isApproved: integer("is_approved", { mode: "boolean" }).notNull().default(false),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
   (table) => [
     check("users_role_check", sql`${table.role} in ('admin', 'editor')`),
     check("users_is_active_check", sql`${table.isActive} in (0, 1)`),
+    check("users_is_approved_check", sql`${table.isApproved} in (0, 1)`),
   ],
 )
 
@@ -122,6 +134,25 @@ export const media = sqliteTable(
   ],
 )
 
+export const blogPermissions = sqliteTable(
+  "blog_permissions",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blogId: text("blog_id")
+      .notNull()
+      .references(() => blogs.id, { onDelete: "cascade" }),
+    permission: text("permission", { enum: blogPermissionValues }).notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.blogId] }),
+    index("idx_blog_permissions_blog").on(table.blogId),
+    check("blog_permissions_permission_check", sql`${table.permission} in ('read', 'write')`),
+  ],
+)
+
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Session = typeof sessions.$inferSelect
@@ -134,3 +165,5 @@ export type Article = typeof articles.$inferSelect
 export type NewArticle = typeof articles.$inferInsert
 export type Media = typeof media.$inferSelect
 export type NewMedia = typeof media.$inferInsert
+export type BlogPermissionRow = typeof blogPermissions.$inferSelect
+export type NewBlogPermission = typeof blogPermissions.$inferInsert

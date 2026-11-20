@@ -2,9 +2,17 @@ import { env, exports } from "cloudflare:workers"
 
 import { createDb } from "../../src/server/db/client"
 import { createArticle } from "../../src/server/db/repositories/articlesRepository"
+import { replaceUserPermissions } from "../../src/server/db/repositories/blogPermissionsRepository"
 import { createBlog } from "../../src/server/db/repositories/blogsRepository"
 import { createUser } from "../../src/server/db/repositories/usersRepository"
-import type { Article, Blog, NewArticle, NewBlog, User } from "../../src/server/db/schema"
+import type {
+  Article,
+  Blog,
+  BlogPermission,
+  NewArticle,
+  NewBlog,
+  User,
+} from "../../src/server/db/schema"
 import { hashPassword } from "../../src/server/lib/password"
 
 export const TEST_PASSWORD = "Test-Password-123"
@@ -24,6 +32,7 @@ export async function clearDatabase(): Promise<void> {
     env.DB.prepare("DELETE FROM sessions"),
     env.DB.prepare("DELETE FROM articles"),
     env.DB.prepare("DELETE FROM media"),
+    env.DB.prepare("DELETE FROM blog_permissions"),
     env.DB.prepare("DELETE FROM blogs"),
     env.DB.prepare("DELETE FROM users"),
     env.DB.prepare("DELETE FROM auth_attempts"),
@@ -36,6 +45,7 @@ type TestUserOptions = {
   password?: string
   role?: User["role"]
   isActive?: boolean
+  isApproved?: boolean
 }
 
 export async function createTestUser(options: TestUserOptions = {}): Promise<User> {
@@ -51,6 +61,7 @@ export async function createTestUser(options: TestUserOptions = {}): Promise<Use
     passwordHash,
     role: options.role ?? "admin",
     isActive: options.isActive ?? true,
+    isApproved: options.isApproved ?? true,
     createdAt: NOW,
     updatedAt: NOW,
   })
@@ -113,6 +124,21 @@ export function richTextImageJson(src: string, alt = "Imagen"): string {
     type: "doc",
     content: [{ type: "image", attrs: { src, alt } }],
   })
+}
+
+export function richTextVideoJson(src: string, title = "Vídeo"): string {
+  return JSON.stringify({
+    type: "doc",
+    content: [{ type: "video", attrs: { src, title } }],
+  })
+}
+
+export async function grantBlogPermission(
+  userId: string,
+  blogId: string,
+  permission: BlogPermission = "write",
+): Promise<void> {
+  await replaceUserPermissions(db, userId, [{ blogId, permission }], NOW)
 }
 
 export function apiFetch(request: Request): Promise<Response> {

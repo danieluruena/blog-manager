@@ -87,9 +87,10 @@ describe("auth", () => {
     expect(blocked.response.headers.get("retry-after")).not.toBeNull()
   })
 
-  it("cambia la contraseña y revoca la sesión", async () => {
+  it("cambia la contraseña y mantiene la sesión actual", async () => {
     const user = await createTestUser({ email: "change@example.com" })
     const { cookie } = await loginAs(user)
+    const otherSession = await loginAs(user)
     const newPassword = "New-Password-456"
 
     const change = await apiFetch(
@@ -105,12 +106,19 @@ describe("auth", () => {
 
     expect(change.status).toBe(204)
 
-    const oldSession = await apiFetch(
+    const currentSession = await apiFetch(
       jsonRequest("/api/auth/me", {
         cookie,
       }),
     )
-    expect(oldSession.status).toBe(401)
+    expect(currentSession.status).toBe(200)
+
+    const revokedSession = await apiFetch(
+      jsonRequest("/api/auth/me", {
+        cookie: otherSession.cookie,
+      }),
+    )
+    expect(revokedSession.status).toBe(401)
 
     const oldLogin = await loginAs(user, TEST_PASSWORD)
     expect(oldLogin.response.status).toBe(401)

@@ -1,7 +1,14 @@
 import { and, asc, desc, eq, getTableColumns, ne, sql, type SQL } from "drizzle-orm"
 
 import type { Database } from "../client"
-import { articles, blogs, type Blog, type NewBlog } from "../schema"
+import {
+  articles,
+  blogs,
+  blogPermissions,
+  type Blog,
+  type BlogPermission,
+  type NewBlog,
+} from "../schema"
 
 type BlogSort = "name" | "updated_at" | "created_at"
 
@@ -11,10 +18,12 @@ export type ListBlogsFilters = {
   page?: number
   pageSize?: number
   sort?: BlogSort
+  userId?: string
 }
 
 export type BlogListItem = Blog & {
   articleCount: number
+  permission?: BlogPermission
 }
 
 export type PaginatedBlogs = {
@@ -48,6 +57,41 @@ export async function listBlogs(
       : filters.sort === "created_at"
         ? desc(blogs.createdAt)
         : desc(blogs.updatedAt)
+
+  if (filters.userId) {
+    const permissionJoin = and(
+      eq(blogPermissions.blogId, blogs.id),
+      eq(blogPermissions.userId, filters.userId),
+    )
+    const [items, countRows] = await Promise.all([
+      db
+        .select({
+          ...getTableColumns(blogs),
+          permission: blogPermissions.permission,
+          articleCount: sql<number>`count(${articles.id})`,
+        })
+        .from(blogs)
+        .innerJoin(blogPermissions, permissionJoin)
+        .leftJoin(articles, eq(articles.blogId, blogs.id))
+        .where(where)
+        .groupBy(blogs.id)
+        .orderBy(orderBy)
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(blogs)
+        .innerJoin(blogPermissions, permissionJoin)
+        .where(where),
+    ])
+
+    return {
+      items,
+      total: countRows[0]?.count ?? 0,
+      page,
+      pageSize,
+    }
+  }
 
   const [items, countRows] = await Promise.all([
     db

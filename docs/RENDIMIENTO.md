@@ -9,12 +9,14 @@ Chunks principales:
 
 | Chunk                          | Tamaño    | Gzip      | Cuándo se carga            |
 | ------------------------------ | --------- | --------- | -------------------------- |
-| `use-articles-*.js`            | 405.29 kB | 127.78 kB | Rutas de artículos y editor |
-| `index-*.js`                   | 296.07 kB | 93.87 kB  | Entrada de la SPA          |
-| `api-*.js`                     | 112.88 kB | 36.49 kB  | Cliente HTTP compartido    |
-| `schemas-*.js`                 | 85.18 kB  | 24.56 kB  | Validación compartida      |
-| `form-*.js`                    | 45.48 kB  | 15.64 kB  | Formularios                |
-| `tiptap-editor-*.js`           | 48.57 kB  | 15.59 kB  | Solo al abrir el editor    |
+| `use-articles-*.js`            | 405.54 kB | 127.84 kB | Rutas de artículos y editor |
+| `index-*.js`                   | 296.70 kB | 94.05 kB  | Entrada de la SPA          |
+| `src-*.js` (Mediabunny)        | 487.85 kB | 124.44 kB | Solo al insertar un vídeo  |
+| `use-auth-*.js`                | 106.69 kB | 34.02 kB  | Sesión y mutaciones de auth |
+| `schemas-*.js`                 | 85.32 kB  | 24.65 kB  | Validación compartida      |
+| `form-*.js`                    | 45.52 kB  | 15.67 kB  | Formularios                |
+| `tiptap-editor-*.js`           | 50.51 kB  | 16.25 kB  | Solo al abrir el editor    |
+| `users-*.js`                   | 18.98 kB  | 5.59 kB   | Solo en `/users` (admin)   |
 
 Notas:
 
@@ -22,10 +24,14 @@ Notas:
   componente se descarga con `import()` al abrir
   `/blogs/:blogId/articles/new` o `/:articleId`. El chunk `use-articles` agrupa
   la página de artículos y las dependencias compartidas del editor.
+- Mediabunny (conversión de vídeo a WebM) se carga con `import()` solo al
+  seleccionar un vídeo, no al abrir el editor.
+- `/users`, `/profile` y `/register` también se cargan con `lazy()`: no engordan
+  la entrada de la SPA ni el panel de quien no es administrador.
 - No hay código de servidor en el cliente: no aparecen `AUTH_PEPPER`,
   `drizzle-orm` ni `D1Database` en `dist/client/assets/*.js`. El renderizador
   HTML (`src/server/lib/richtext.ts`) solo se ejecuta en el Worker.
-- El build ya no genera el aviso de chunk >500 kB.
+- El build no genera el aviso de chunk >500 kB en el bundle inicial.
 
 ## Consultas D1
 
@@ -44,6 +50,9 @@ npx wrangler d1 execute blog-manager-db --local --command "EXPLAIN QUERY PLAN <s
 | Búsqueda de artículos          | `idx_articles_blog_updated (blog_id=?)` + `LIKE` sobre título/extracto/slug |
 | Medios de un artículo          | `idx_media_article (article_id=?)`                                   |
 | Sesión por token               | `sessions_token_hash_unique (token_hash=?)`                          |
+| Blogs de un editor             | `sqlite_autoindex_blog_permissions_1 (user_id=?)` + `blogs` por PK   |
+| Permisos de un usuario         | `sqlite_autoindex_blog_permissions_1 (user_id=?)` + `blogs` por PK   |
+| Listado de usuarios            | `SCAN users` (tabla pequeña) + permisos por `user_id`                |
 
 Conclusiones:
 
@@ -55,6 +64,10 @@ Conclusiones:
   visibles; el `USE TEMP B-TREE` es aceptable con el `LIMIT` de 1–50.
 - El listado de blogs escanea la tabla de blogs y ordena en memoria: es una
   tabla pequeña por diseño (un blog por web). No requiere cambios.
+- Los permisos por blog se resuelven con una búsqueda por PK compuesta; un
+  administrador no consulta `blog_permissions` (acceso completo directo). El
+  listado de usuarios es exclusivo de administradores y usa dos consultas
+  acotadas (usuarios + permisos), sin N+1.
 - Revisar índices si algún blog supera ~10.000 artículos o si la búsqueda pasa a
   ser una función principal.
 
