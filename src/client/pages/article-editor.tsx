@@ -3,7 +3,10 @@ import { Link, useParams } from "react-router"
 
 import { ArticleForm } from "../components/articles/article-form"
 import { EmptyState } from "../components/layout/empty-state"
+import { PageHeader } from "../components/layout/page-header"
+import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
+import { Card, CardContent } from "../components/ui/card"
 import { Skeleton } from "../components/ui/skeleton"
 import { useArticle } from "../hooks/use-articles"
 import { useAuth } from "../hooks/use-auth"
@@ -69,11 +72,67 @@ export function ArticleEditorPage() {
   }
 
   const currentArticle = article.data?.data
+  const currentBlog = blog.data.data
+
+  if (currentBlog.permission !== "write") {
+    if (!currentArticle) {
+      return (
+        <EmptyState
+          icon={FileText}
+          title="Solo consulta"
+          description="No tienes permiso para crear artículos en este blog."
+          action={
+            <Button variant="outline" asChild>
+              <Link to={`/blogs/${blogId}/articles`}>Volver a artículos</Link>
+            </Button>
+          }
+        />
+      )
+    }
+
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow={currentBlog.name}
+          title={currentArticle.title}
+          description={currentArticle.excerpt || "Lectura de artículo."}
+          actions={
+            <>
+              <Badge variant="outline" className="border-line bg-surface-2 text-muted-foreground">
+                Solo lectura
+              </Badge>
+              <Button variant="outline" asChild>
+                <Link to={`/blogs/${blogId}/articles`}>Volver a artículos</Link>
+              </Button>
+            </>
+          }
+        />
+
+        {currentArticle.coverImage ? (
+          <img
+            src={currentArticle.coverImage}
+            alt=""
+            className="max-h-72 w-full rounded-xl border border-line object-cover"
+          />
+        ) : null}
+
+        <Card className="overflow-hidden border-line bg-surface py-0">
+          <CardContent className="p-0">
+            <div
+              className="tiptap"
+              // El HTML lo genera el servidor con una lista blanca de nodos y estilos.
+              dangerouslySetInnerHTML={{ __html: currentArticle.body }}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <ArticleForm
       key={currentArticle?.id ?? "new"}
-      blog={blog.data.data}
+      blog={currentBlog}
       article={currentArticle}
       defaultAuthor={auth.data?.name ?? ""}
     />

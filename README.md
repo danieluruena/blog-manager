@@ -10,7 +10,7 @@ Gestor administrativo multi-blog para páginas web. Cada blog tiene sus propios 
 
 ## Estado
 
-**Fase 8 — Despliegue.** La aplicación está publicada en `https://blog-manager.dennis14756.workers.dev` y los cambios se despliegan automáticamente al hacer merge a `main`.
+**Fase 9 — Usuarios y permisos.** La aplicación está publicada en `https://blog-manager.dennis14756.workers.dev` y los cambios se despliegan automáticamente al hacer merge a `main`. Incluye auto-registro con aprobación, permisos por blog (consulta o edición) y perfil propio.
 
 Documentación:
 
@@ -123,13 +123,22 @@ npm run db:seed
 npm run user:create -- --email tu@email.com --name "Tu Nombre"
 ```
 
-El comando pide la contraseña de forma interactiva (mínimo 12 caracteres) y lee `AUTH_PEPPER` de `.dev.vars`. Para automatizarlo:
+El comando pide la contraseña de forma interactiva (mínimo 12 caracteres) y lee `AUTH_PEPPER` de `.dev.vars`. Los usuarios creados por CLI quedan **aprobados**. Para automatizarlo:
 
 ```powershell
 $env:ADMIN_PASSWORD = "una-contraseña-larga"
 npm run user:create -- --email tu@email.com --name "Tu Nombre"
 Remove-Item Env:ADMIN_PASSWORD
 ```
+
+### Usuarios, aprobación y permisos
+
+- Cualquiera puede crear una cuenta en `/register` con nombre, email y contraseña. Queda **pendiente de aprobación** y no puede iniciar sesión: el login responde `Usuario pendiente de aprobación`.
+- Un administrador ve las cuentas en `/users`, puede crearlas, editarlas, aprobarlas y eliminarlas. Para aprobar a un editor debe asignarle **al menos un permiso de blog**: `read` (consulta) o `write` (edición).
+- Los administradores tienen acceso completo a todos los blogs y a la gestión de usuarios; no necesitan filas de permisos.
+- Los editores solo ven los blogs asignados. Con `read` pueden consultar blogs y artículos; con `write` también crean, editan y borran artículos y suben media.
+- Retirar la aprobación o desactivar una cuenta invalida sus sesiones activas.
+- Todos los usuarios, incluido el administrador, tienen `/profile` para cambiar su nombre y contraseña. El cambio de contraseña exige la contraseña actual, mantiene la sesión actual y revoca las demás.
 
 Para crear los recursos remotos y desplegar sí necesitas autenticarte:
 
@@ -150,15 +159,18 @@ npx wrangler secret put AUTH_PEPPER
 
 Rutas principales:
 
-| Ruta                                 | Pantalla                                |
-| ------------------------------------ | --------------------------------------- |
-| `/login`                             | Inicio de sesión                        |
-| `/`                                  | Panel con métricas y actividad reciente |
-| `/blogs`                             | Lista y CRUD de blogs                   |
-| `/blogs/:blogId/articles`            | Lista y filtros de artículos            |
-| `/blogs/:blogId/articles/new`        | Editor de un artículo nuevo             |
-| `/blogs/:blogId/articles/:articleId` | Edición de un artículo                  |
-| `/blogs/:blogId/settings`            | Ajustes del blog                        |
+| Ruta                                 | Pantalla                                 |
+| ------------------------------------ | ---------------------------------------- |
+| `/login`                             | Inicio de sesión                         |
+| `/register`                          | Auto-registro de cuenta                  |
+| `/`                                  | Panel con métricas (solo administrador)  |
+| `/blogs`                             | Lista de blogs (filtrada por permisos)   |
+| `/blogs/:blogId/articles`            | Lista y filtros de artículos             |
+| `/blogs/:blogId/articles/new`        | Editor de un artículo nuevo              |
+| `/blogs/:blogId/articles/:articleId` | Edición o lectura de un artículo         |
+| `/blogs/:blogId/settings`            | Ajustes del blog (solo administrador)    |
+| `/users`                             | Gestión de usuarios (solo administrador) |
+| `/profile`                           | Perfil propio: nombre y contraseña       |
 
 El editor de artículos usa **Tiptap** con carga diferida. Guarda el documento JSON en `body_json` y el servidor genera el HTML que sirve la API pública. Permite familias tipográficas, tamaños, colores, resaltado, alineación, enlaces, imágenes, vídeos, listas, citas y código. Las imágenes y los vídeos se previsualizan en local y se suben a R2 al guardar el artículo. El formulario incluye además una portada con previsualización que se muestra junto al título en el listado.
 
@@ -200,7 +212,7 @@ npm run check      # typecheck + lint + tests + build
 npm run format     # Prettier sobre el código
 ```
 
-La suite incluye 80 tests de integración y unitarios. La interfaz se auditó con
+La suite incluye 107 tests de integración y unitarios. La interfaz se auditó con
 axe (WCAG 2 A/AA) en login, panel, blogs, artículos y editor sin violaciones
 detectadas.
 

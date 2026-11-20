@@ -41,7 +41,7 @@ flowchart LR
 | Base de datos | **Cloudflare D1** | Relacional, consistente, índices, `UNIQUE`, `FOREIGN KEY`, transacciones y Time Travel. Es el servicio gestionado de Cloudflare más adecuado para este modelo. |
 | Acceso a datos | **Drizzle ORM + SQL** | Esquema tipado, consultas seguras con parámetros y migraciones SQL generadas. |
 | Autenticación | **Login propio multiusuario** | Requisito confirmado. Sin dependencia de dominio propio ni Zero Trust. |
-| Usuarios | **Multiusuario desde el esquema; un administrador inicial** | Se evita una migración dolorosa al añadir usuarios. Roles `admin` y `editor`. |
+| Usuarios | **Multiusuario con auto-registro, aprobación y permisos por blog** | Cada cuenta nueva queda pendiente hasta que un administrador le asigna consulta o edición sobre al menos un blog. |
 | Imágenes y vídeos | **R2 + `/media/*` desde el MVP** | Copiar/pegar imágenes o vídeos y subirlos directamente desde el editor. |
 | Borrado de blogs | **Bloqueado si tiene artículos** | Evita pérdidas accidentales; la FK `RESTRICT` refuerza la regla. |
 | API pública | **Consumo desde navegador con CORS por blog** | Los sitios consultan desde el cliente; se permite el origen de `site_url` y orígenes extra. |
@@ -136,10 +136,7 @@ blog-manager/
 │  │  ├─ index.ts               # Hono app + export del Worker
 │  │  ├─ routes/
 │  │  │  ├─ auth.ts
-│  │  │  ├─ admin.blogs.ts
-│  │  │  ├─ admin.articles.ts
-│  │  │  ├─ admin.stats.ts
-│  │  │  ├─ admin.users.ts      # post-MVP
+│  │  │  ├─ admin.ts            # blogs, artículos, media, stats y usuarios
 │  │  │  ├─ public.ts
 │  │  │  └─ media.ts
 │  │  ├─ middleware/            # auth, request-id, errors, cors
@@ -256,6 +253,7 @@ CREATE TABLE users (
   role          TEXT NOT NULL DEFAULT 'admin'
                 CHECK (role IN ('admin', 'editor')),
   is_active     INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+  is_approved   INTEGER NOT NULL DEFAULT 0 CHECK (is_approved IN (0, 1)),
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL
 );
@@ -293,6 +291,19 @@ CREATE TABLE blogs (
 );
 
 CREATE INDEX idx_blogs_active ON blogs (is_active);
+
+-- Permisos por blog para editores. Los administradores no necesitan filas.
+CREATE TABLE blog_permissions (
+  user_id    TEXT NOT NULL,
+  blog_id    TEXT NOT NULL,
+  permission TEXT NOT NULL CHECK (permission IN ('read', 'write')),
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, blog_id),
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  FOREIGN KEY (blog_id) REFERENCES blogs (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_blog_permissions_blog ON blog_permissions (blog_id);
 
 CREATE TABLE articles (
   id           TEXT PRIMARY KEY,
@@ -334,7 +345,7 @@ CREATE TABLE media (
 );
 ```
 
-> D1 aplica las claves foráneas por defecto. `articles` usa `ON DELETE RESTRICT`: un blog con artículos no se puede borrar, ni siquiera por error desde SQL. `media` usa `ON DELETE CASCADE`; los objetos de R2 se eliminan en el servicio antes de borrar el blog (ver §10). El primer administrador se crea con `scripts/create-admin.ts`; no hay contraseñas por defecto.
+> D1 aplica las claves foráneas por defecto. `articles` usa `ON DELETE RESTRICT`: un blog con artículos no se puede borrar, ni siquiera por error desde SQL. `media` y `blog_permissions` usan `ON DELETE CASCADE`; los objetos de R2 se eliminan en el servicio antes de borrar el blog (ver §10). El primer administrador se crea con `scripts/create-admin.ts`; no hay contraseñas por defecto.
 
 ### 5.3. Campos y reglas
 
@@ -360,10 +371,22 @@ CREATE TABLE media (
 | `email` | string | Único global, minúsculas, formato de email válido. |
 | `name` | string | 1–120 caracteres. |
 | `password_hash` | string | HMAC-SHA256 con pepper y salt por usuario (`hmac-sha256$1$salt$hash`). El pepper vive en un secret del Worker, no en D1. Nunca se devuelve en la API. |
-| `role` | enum | `admin` o `editor`. En el MVP solo existe un `admin`. |
+| `role` | enum | `admin` o `editor`. Los administradores tienen acceso completo; los editores dependen de `blog_permissions`. |
 | `is_active` | boolean | Un usuario desactivado no puede iniciar sesión. |
+| `is_approved` | boolean | Empieza en `false` en el auto-registro. Un usuario no aprobado recibe `403` con «Usuario pendiente de aprobación». Los usuarios creados por CLI quedan aprobados. |
 | `created_at` | ISO 8601 | UTC, generado por el servidor. |
 | `updated_at` | ISO 8601 | UTC, actualizado por el servidor. |
+
+#### Permiso por blog
+
+| Campo | Tipo | Regla |
+|---|---|---|
+| `user_id` | UUID | Usuario editor; FK con `ON DELETE CASCADE`. |
+| `blog_id` | UUID | Blog al que da acceso; FK con `ON DELETE CASCADE`. |
+| `permission` | enum | `read` (consulta) o `write` (edición). |
+| `created_at` | ISO 8601 | UTC. |
+
+La clave primaria es `(user_id, blog_id)`: un usuario tiene como máximo un permiso por blog. Los administradores no usan esta tabla y siempre obtienen `write`. Un editor aprobado debe tener al menos un permiso; la API lo valida con `APPROVAL_REQUIRES_PERMISSION`.
 
 #### Sesión
 
@@ -439,7 +462,7 @@ CREATE TABLE media (
 }
 ```
 
-Códigos de error previstos: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT` (incluye `SLUG_DUPLICADO` y `BLOG_HAS_ARTICLES`), `RATE_LIMITED`, `INTERNAL`.
+Códigos de error previstos: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT` (incluye `SLUG_DUPLICADO`, `BLOG_HAS_ARTICLES`, `EMAIL_IN_USE`), `RATE_LIMITED`, `INVALID_CREDENTIALS`, `USER_PENDING_APPROVAL`, `APPROVAL_REQUIRES_PERMISSION`, `CANNOT_DELETE_SELF`, `CANNOT_DEACTIVATE_SELF`, `CANNOT_DEMOTE_SELF`, `LAST_ADMIN`, `INTERNAL`.
 
 ### 6.2. Endpoints de administración
 
@@ -447,22 +470,24 @@ Códigos de error previstos: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `N
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `POST` | `/api/auth/login` | Email + contraseña; crea cookie de sesión. Rate limited. |
+| `POST` | `/api/auth/register` | Auto-registro público; crea un editor no aprobado. Rate limited por IP. |
+| `POST` | `/api/auth/login` | Email + contraseña; crea cookie de sesión. Rate limited. Rechaza no aprobados con «Usuario pendiente de aprobación». |
 | `POST` | `/api/auth/logout` | Cierra la sesión actual y borra la cookie. |
 | `GET` | `/api/auth/me` | Devuelve el usuario actual o 401. |
-| `PATCH` | `/api/auth/password` | Cambia la contraseña del usuario actual y revoca sus sesiones. |
+| `PATCH` | `/api/auth/profile` | Cambia el nombre del usuario actual. |
+| `PATCH` | `/api/auth/password` | Cambia la contraseña (exige la actual), conserva la sesión actual y revoca las demás. |
 
-> El registro de usuarios no es público. En el MVP el primer administrador se crea con `scripts/create-admin.ts`; la gestión de usuarios desde la UI es post-MVP.
+El primer administrador se crea con `scripts/create-admin.ts` y queda aprobado. A partir de ahí, el resto de cuentas pueden auto-registrarse o crearse desde `/users`.
 
 #### Blogs
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/api/admin/blogs` | Lista con `q`, `active`, `page`, `pageSize`, `sort`. Incluye `articleCount`. |
-| `POST` | `/api/admin/blogs` | Crea blog. |
-| `GET` | `/api/admin/blogs/:blogId` | Detalle. |
-| `PATCH` | `/api/admin/blogs/:blogId` | Actualiza campos parciales, incluidos `isActive` y `allowedOrigins`. |
-| `DELETE` | `/api/admin/blogs/:blogId` | Elimina el blog solo si no tiene artículos; si los tiene, `409 BLOG_HAS_ARTICLES`. |
+| `GET` | `/api/admin/blogs` | Lista con `q`, `active`, `page`, `pageSize`, `sort`. Incluye `articleCount` y `permission`. Un editor solo ve sus blogs asignados. |
+| `POST` | `/api/admin/blogs` | Crea blog. Solo `admin`. |
+| `GET` | `/api/admin/blogs/:blogId` | Detalle. Requiere permiso `read`. |
+| `PATCH` | `/api/admin/blogs/:blogId` | Actualiza campos parciales, incluidos `isActive` y `allowedOrigins`. Solo `admin`. |
+| `DELETE` | `/api/admin/blogs/:blogId` | Elimina el blog solo si no tiene artículos; si los tiene, `409 BLOG_HAS_ARTICLES`. Solo `admin`. |
 
 Ejemplo de bloqueo de borrado:
 
@@ -481,33 +506,38 @@ Ejemplo de bloqueo de borrado:
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/api/admin/blogs/:blogId/articles` | Lista con `q`, `status`, `sort`, `page`, `pageSize`. |
-| `POST` | `/api/admin/blogs/:blogId/articles` | Crea artículo en ese blog. |
-| `GET` | `/api/admin/blogs/:blogId/articles/:articleId` | Detalle. |
-| `PATCH` | `/api/admin/blogs/:blogId/articles/:articleId` | Actualiza campos parciales, incluido `status`. |
-| `DELETE` | `/api/admin/blogs/:blogId/articles/:articleId` | Elimina artículo. |
+| `GET` | `/api/admin/blogs/:blogId/articles` | Lista con `q`, `status`, `sort`, `page`, `pageSize`. Requiere `read`. |
+| `POST` | `/api/admin/blogs/:blogId/articles` | Crea artículo en ese blog. Requiere `write`. |
+| `GET` | `/api/admin/blogs/:blogId/articles/:articleId` | Detalle. Requiere `read`. |
+| `PATCH` | `/api/admin/blogs/:blogId/articles/:articleId` | Actualiza campos parciales, incluido `status`. Requiere `write`. |
+| `DELETE` | `/api/admin/blogs/:blogId/articles/:articleId` | Elimina artículo. Requiere `write`. |
 
 #### Dashboard
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/api/admin/stats` | Totales de blogs/artículos y actividad reciente. |
+| `GET` | `/api/admin/stats` | Totales de blogs/artículos y actividad reciente. Solo `admin`. |
 
-#### Usuarios (post-MVP)
+#### Usuarios
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/api/admin/users` | Lista usuarios. Solo `admin`. |
+| `GET` | `/api/admin/users` | Lista usuarios con sus permisos por blog. Solo `admin`. |
 | `POST` | `/api/admin/users` | Crea un usuario. Solo `admin`. |
-| `PATCH` | `/api/admin/users/:userId` | Cambia nombre, rol o estado. Solo `admin`. |
-| `PATCH` | `/api/admin/users/:userId/password` | Resetea la contraseña. Solo `admin`. |
+| `PATCH` | `/api/admin/users/:userId` | Cambia nombre, email, rol, estado, aprobación y permisos. Solo `admin`. |
+| `DELETE` | `/api/admin/users/:userId` | Elimina usuario, sus sesiones y permisos. Solo `admin`. |
 
-Roles previstos:
+Roles:
 
-- `admin`: todo, incluida la gestión de usuarios y el borrado de blogs.
-- `editor`: CRUD de artículos; no puede borrar blogs ni gestionar usuarios.
+- `admin`: todo, incluida la gestión de usuarios, estadísticas y el borrado de blogs. No necesita filas en `blog_permissions`.
+- `editor`: solo accede a los blogs asignados. `read` permite listar/ver; `write` permite crear, editar y borrar artículos y subir media. No puede gestionar usuarios, estadísticas ni ajustes de blog.
 
-En el MVP solo se implementa el rol `admin` y la creación del primer administrador por CLI. La UI de usuarios puede añadirse sin cambiar el esquema.
+Reglas de aprobación y seguridad:
+
+- Un editor aprobado debe tener al menos un permiso (`APPROVAL_REQUIRES_PERMISSION`).
+- La sesión exige `is_active = true` e `is_approved = true`; retirar cualquiera de las dos invalida las sesiones activas.
+- El administrador no puede eliminarse, desactivarse ni quitarse el rol; siempre debe quedar al menos un administrador activo.
+- Los permisos se reemplazan en bloque al guardar el usuario.
 
 #### Media (MVP)
 
@@ -645,9 +675,10 @@ La API pública resuelve primero el blog por `blogSlug` y después consulta solo
 
 Se implementa autenticación propia, sin Cloudflare Access, para que funcione en el host gratuito `*.workers.dev`.
 
-- Tabla `users` con email único, nombre, hash de contraseña, rol (`admin`/`editor`) y estado.
-- En el MVP solo se crea un administrador; el esquema y el middleware ya soportan múltiples usuarios.
-- El registro público está deshabilitado. Los usuarios se crean por CLI en el MVP y por la UI de administración en una fase posterior.
+- Tabla `users` con email único, nombre, hash de contraseña, rol (`admin`/`editor`), estado activo y aprobación.
+- Cualquier visitante puede auto-registrarse en `/register`; la cuenta queda sin aprobar y no puede iniciar sesión hasta que un administrador la apruebe y le asigne al menos un permiso de blog.
+- Los administradores se crean por CLI (`scripts/create-admin.ts`) y quedan aprobados. Desde `/users` el administrador puede crear cuentas, aprobarlas, cambiar permisos y eliminarlas.
+- Los permisos viven en `blog_permissions` (`read` o `write` por blog); los administradores tienen acceso completo sin filas.
 - Contraseñas con HMAC-SHA256, salt aleatorio de 16 bytes y un pepper secreto de al menos 32 caracteres. Formato almacenado: `hmac-sha256$1$<salt>$<hash>`.
 - El pepper se guarda en el secret `AUTH_PEPPER` del Worker y nunca en D1.
 - Comparación en tiempo constante.
@@ -660,8 +691,9 @@ Se implementa autenticación propia, sin Cloudflare Access, para que funcione en
 - Al hacer login se genera un token aleatorio de 32 bytes con `crypto.getRandomValues`.
 - La cookie contiene el token en claro; la tabla `sessions` guarda solo su SHA-256.
 - Cookie: `bm_session`, `HttpOnly`, `Secure` en HTTPS, `SameSite=Strict`, `Path=/`, `Max-Age=604800` (7 días).
-- Cada petición a `/api/admin/*` valida la cookie: hash → sesión → usuario activo → expiración.
-- Logout borra la sesión y la cookie. Cambiar contraseña o desactivar un usuario revoca sus sesiones.
+- Cada petición a `/api/admin/*` valida la cookie: hash → sesión → usuario activo y aprobado → expiración.
+- Los editores pasan además por la comprobación de permiso del blog (`read`/`write`).
+- Logout borra la sesión y la cookie. Cambiar contraseña conserva la sesión actual y revoca las demás; revocar la aprobación o desactivar un usuario invalida todas sus sesiones.
 - Limpieza oportunista de sesiones expiradas en el login o en una tarea programada (post-MVP).
 
 ### 8.3. Creación del primer administrador
@@ -736,13 +768,15 @@ Tipografía:
 
 ### 9.3. Pantallas
 
-1. **Login:** tarjeta centrada, fondo oscuro, feedback claro, sin registro público.
-2. **Panel:** 4 tarjetas de métricas (blogs, blogs activos, artículos, publicados), actividad reciente y resumen por blog.
-3. **Blogs:** grid de tarjetas con nombre, descripción, URL, estado, número de artículos y acciones. Crear/editar en un drawer o página dedicada.
-4. **Workspace del blog:** cabecera con identidad del blog, enlace al sitio, toggle activo/inactivo y botón “Nuevo artículo”; tabs “Artículos” y “Ajustes”. En Ajustes se editan `site_url`, `allowed_origins`, descripción y estado.
-5. **Artículos:** barra de filtros (búsqueda, estado, orden), tabla en escritorio y tarjetas en móvil con portada, título, descripción, estado, fecha y acciones. Paginación.
-6. **Editor de artículo:** título, portada, descripción y vista previa de la miniatura en dos configuraciones en la columna principal; panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug); editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, vídeos, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes y vídeos los optimiza a WebP/WebM y los sube a R2 al guardar.
-7. **Usuarios (post-MVP):** lista de usuarios, roles y estado; solo visible para `admin`.
+1. **Login:** tarjeta centrada, fondo oscuro, feedback claro y enlace al auto-registro.
+2. **Registro:** nombre, email y contraseña; confirma que la cuenta queda pendiente de aprobación.
+3. **Panel:** 4 tarjetas de métricas (blogs, blogs activos, artículos, publicados), actividad reciente y resumen por blog. Solo `admin`; un editor se redirige a `/blogs`.
+4. **Blogs:** grid de tarjetas con nombre, descripción, URL, estado, permiso y número de artículos. El administrador crea/edita/borra; el editor solo ve sus blogs y las acciones de edición según su permiso.
+5. **Workspace del blog:** cabecera con identidad del blog, enlace al sitio, toggle activo/inactivo y botón “Nuevo artículo”; tabs “Artículos” y “Ajustes”. Los ajustes son solo para `admin`.
+6. **Artículos:** barra de filtros (búsqueda, estado, orden), tabla en escritorio y tarjetas en móvil con portada, título, descripción, estado, fecha y acciones. Con permiso `read` no se muestran acciones de edición y el detalle se abre en modo lectura.
+7. **Editor de artículo:** título, portada, descripción y vista previa de la miniatura en dos configuraciones en la columna principal; panel lateral de metadatos (blog de solo lectura, autor, estado, fechas, slug); editor rich text con toolbar (fuentes, tamaños, colores, resaltado, alineación, listas, enlaces, imágenes, vídeos, código y citas), barra de acciones fija (Guardar, Cancelar, Publicar) y contador de palabras. Aviso de cambios sin guardar. Pegar o arrastrar imágenes y vídeos los optimiza a WebP/WebM y los sube a R2 al guardar.
+8. **Usuarios:** solo `admin`. Tarjetas con rol, estado de aprobación, actividad y permisos por blog; búsqueda, filtro (pendientes/aprobados/inactivos), alta, edición, aprobación y borrado.
+9. **Perfil:** nombre editable y cambio de contraseña con la contraseña actual; disponible para todos los roles.
 
 ### 9.4. Componentes y UX
 
@@ -761,13 +795,16 @@ Tipografía:
 | Ruta | Pantalla |
 |---|---|
 | `/login` | Inicio de sesión |
-| `/` | Panel |
-| `/blogs` | Lista de blogs |
+| `/register` | Auto-registro de cuenta |
+| `/` | Panel (solo `admin`; los editores van a `/blogs`) |
+| `/blogs` | Lista de blogs filtrada por permisos |
 | `/blogs/:blogId` | Redirige a artículos |
 | `/blogs/:blogId/articles` | Artículos del blog |
 | `/blogs/:blogId/articles/new` | Editor de artículo nuevo |
-| `/blogs/:blogId/articles/:articleId` | Editor de artículo existente |
-| `/blogs/:blogId/settings` | Ajustes del blog |
+| `/blogs/:blogId/articles/:articleId` | Editor o lectura del artículo según permiso |
+| `/blogs/:blogId/settings` | Ajustes del blog (solo `admin`) |
+| `/users` | Gestión de usuarios (solo `admin`) |
+| `/profile` | Perfil propio |
 
 No habrá una ruta global de artículos ni un buscador que mezcle artículos de distintos blogs en la vista principal.
 
@@ -1003,7 +1040,7 @@ Pero en este proyecto también añadiría:
 | Migraciones manuales olvidadas | Workflow de migración con aprobación + smoke test post-deploy. |
 | Límite de 500 MB de D1 en gratuito | Suficiente para textos; las imágenes van a R2. |
 | Cambios de esquema en producción | Migraciones versionadas, backup previo, staging. |
-| Multiusuario/roles | Empezar con `admin`; permisos comprobados en servidor; auditoría de acciones. |
+| Multiusuario/roles | Auto-registro con aprobación y permisos por blog (`read`/`write`); permisos comprobados en servidor. |
 
 ---
 
@@ -1016,13 +1053,13 @@ Pero en este proyecto también añadiría:
 | Imágenes | R2 desde el MVP, con pegar/arrastrar y subida diferida al guardar. |
 | Consumo público | Desde el navegador; CORS por blog (`site_url` + `allowed_origins`). |
 | Borrado de blogs | Bloqueado si tiene artículos (`409 BLOG_HAS_ARTICLES`). |
-| Usuarios | Multiusuario desde el esquema; un administrador inicial. |
+| Usuarios | Multiusuario con auto-registro, aprobación y permisos por blog. |
 | IaC | `wrangler.jsonc` + script de bootstrap + migraciones; sin Terraform en el MVP. |
 
 Los detalles menores quedaron resueltos con los valores aprobados:
 
 - Worker y subdominio: `blog-manager` en `*.workers.dev`.
 - Nombre visible de la aplicación: “Blog Manager”.
-- UI de gestión de usuarios: post-MVP; el esquema ya la soporta.
-- Rol `editor`: acceso a todos los blogs; la asignación por blog queda para después.
+- UI de gestión de usuarios: implementada en `/users`, con aprobación y permisos por blog.
+- Rol `editor`: acceso solo a los blogs asignados con permiso `read` o `write`.
 - Email y nombre del administrador inicial: se definen al ejecutar `npm run user:create`.

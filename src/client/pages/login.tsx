@@ -3,7 +3,7 @@ import { loginSchema, type LoginInput } from "@shared/schemas"
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
-import { Navigate, useLocation, useNavigate } from "react-router"
+import { Navigate, Link, useLocation, useNavigate } from "react-router"
 
 import { useAuth, useLogin } from "../hooks/use-auth"
 import { ApiError } from "../lib/api"
@@ -96,7 +96,7 @@ export function LoginPage() {
 
           <div className="mt-12 inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             <span className="size-1.5 rounded-full bg-success" />
-            Fase 7 · Hardening
+            Usuarios y permisos
           </div>
         </section>
 
@@ -200,7 +200,11 @@ export function LoginPage() {
             </Form>
 
             <p className="mt-6 text-center text-[11px] leading-5 text-muted-foreground">
-              Solo administradores autorizados. La sesión caduca a los 7 días.
+              Acceso para usuarios aprobados. La sesión caduca a los 7 días.
+              <br />
+              <Link to="/register" className="mt-2 inline-block text-brand hover:underline">
+                Crear una cuenta
+              </Link>
             </p>
           </div>
         </section>

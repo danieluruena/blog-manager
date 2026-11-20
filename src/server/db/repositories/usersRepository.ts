@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq, ne, sql } from "drizzle-orm"
 
 import type { Database } from "../client"
 import { users, type NewUser, type User } from "../schema"
@@ -46,11 +46,44 @@ export async function createUser(db: Database, input: NewUser): Promise<User> {
 export async function updateUser(
   db: Database,
   id: string,
-  input: Partial<Pick<NewUser, "name" | "passwordHash" | "role" | "isActive" | "updatedAt">>,
+  input: Partial<
+    Pick<
+      NewUser,
+      "name" | "email" | "passwordHash" | "role" | "isActive" | "isApproved" | "updatedAt"
+    >
+  >,
 ): Promise<User | null> {
-  const [user] = await db.update(users).set(input).where(eq(users.id, id)).returning()
+  const [user] = await db
+    .update(users)
+    .set({
+      ...input,
+      ...(input.email !== undefined ? { email: normalizeEmail(input.email) } : {}),
+    })
+    .where(eq(users.id, id))
+    .returning()
 
   return user ?? null
+}
+
+export async function deleteUser(db: Database, id: string): Promise<boolean> {
+  const rows = await db.delete(users).where(eq(users.id, id)).returning({ id: users.id })
+
+  return rows.length > 0
+}
+
+export async function countActiveAdmins(db: Database, excludeId?: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(users)
+    .where(
+      and(
+        eq(users.role, "admin"),
+        eq(users.isActive, true),
+        ...(excludeId ? [ne(users.id, excludeId)] : []),
+      ),
+    )
+
+  return rows[0]?.count ?? 0
 }
 
 export async function deactivateUser(

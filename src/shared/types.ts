@@ -1,4 +1,4 @@
-import type { ArticleStatus, UserRole } from "./constants"
+import type { ArticleStatus, BlogPermission, UserRole } from "./constants"
 
 export type HealthResponse = {
   ok: true
@@ -36,6 +36,21 @@ export type UserDto = {
   email: string
   name: string
   role: UserRole
+  isActive: boolean
+  isApproved: boolean
+}
+
+export type UserPermissionDto = {
+  blogId: string
+  blogName: string
+  blogSlug: string
+  permission: BlogPermission
+}
+
+export type AdminUserDto = UserDto & {
+  permissions: UserPermissionDto[]
+  createdAt: string
+  updatedAt: string
 }
 
 export type LoginResponse = DataResponse<{
@@ -47,6 +62,11 @@ export type MeResponse = DataResponse<{
   user: UserDto
 }>
 
+export type RegisterResponse = DataResponse<{
+  user: UserDto
+  message: string
+}>
+
 export type BlogDto = {
   id: string
   name: string
@@ -55,6 +75,7 @@ export type BlogDto = {
   siteUrl: string
   allowedOrigins: string[]
   isActive: boolean
+  permission: BlogPermission
   articleCount?: number
   createdAt: string
   updatedAt: string

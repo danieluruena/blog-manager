@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { AlertCircle, ArrowUpRight, CheckCircle2, FileText, Library, Send } from "lucide-react"
-import { Link } from "react-router"
+import { Link, Navigate } from "react-router"
 
 import { PageHeader } from "../components/layout/page-header"
 import { EmptyState } from "../components/layout/empty-state"
@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Skeleton } from "../components/ui/skeleton"
+import { useAuth } from "../hooks/use-auth"
 import { api } from "../lib/api"
 import { formatDate } from "../lib/format"
 
@@ -40,10 +41,21 @@ function MetricCard({
 }
 
 export function DashboardPage() {
+  const auth = useAuth()
+  const isAdmin = auth.data?.role === "admin"
   const stats = useQuery({
     queryKey: ["stats"],
     queryFn: async () => (await api.getStats()).data,
+    enabled: isAdmin,
   })
+
+  if (!auth.data) {
+    return null
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/blogs" replace />
+  }
 
   return (
     <div className="space-y-8">

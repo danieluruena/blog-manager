@@ -1,7 +1,7 @@
 # Plan de implementación — Blog Manager
 
 > **Estado:** plan actualizado con las decisiones confirmadas.
-> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. Fase 8 completada: D1/R2 remotos, secreto, migraciones, despliegue y pipeline. Fase 9 completada: editor rich text con Tiptap, `body_json`, renderizado HTML seguro y conversión de artículos locales. Fase 10 completada: imagen de portada con previsualización, subida diferida y miniatura en el listado. Fase 11 completada: vídeos WebM con conversión en el navegador y entrega con rangos.
+> **Progreso:** Fase 0 completada. Fase 1 completada: esquema D1, migraciones, repositorios, seed y CLI de administración. Fase 2 completada: auth, CRUD de blogs y artículos, stats, API pública y CORS. Fase 3 completada: sistema de diseño, login, shell responsive y panel. Fase 4 completada: CRUD visual de blogs, ajustes, activación/desactivación y borrado bloqueado. Fase 5 completada: listado de artículos con filtros, publicación y aviso de cambios sin guardar. Fase 6 completada: subida de imágenes a R2 con pegar/arrastrar, entrega con caché y limpieza. Fase 7 completada: hardening de seguridad, cabeceras, accesibilidad, tests y documentación operativa. Fase 8 completada: D1/R2 remotos, secreto, migraciones, despliegue y pipeline. Fase 9 completada: editor rich text con Tiptap, `body_json`, renderizado HTML seguro y conversión de artículos locales. Fase 10 completada: imagen de portada con previsualización, subida diferida y miniatura en el listado. Fase 11 completada: vídeos WebM con conversión en el navegador y entrega con rangos. Fase 12 completada: auto-registro, aprobación por administrador, permisos por blog (consulta/edición) y perfil propio.
 > **Documento de arquitectura:** [`ARQUITECTURA.md`](./ARQUITECTURA.md)
 > **Fecha:** 2026-11-18
 
@@ -16,7 +16,7 @@
 | Imágenes | R2 desde el MVP, con pegar/arrastrar y subida diferida al guardar. |
 | Consumo público | Las webs consultan desde el navegador; CORS por blog. |
 | Borrado de blogs | Bloqueado si el blog tiene artículos. |
-| Usuarios | Multiusuario desde el esquema; un administrador inicial. |
+| Usuarios | Auto-registro con aprobación del administrador y permisos por blog (`read`/`write`). |
 | IaC | `wrangler.jsonc` + script de bootstrap + migraciones; sin Terraform en el MVP. |
 
 ---
@@ -25,8 +25,9 @@
 
 ### MVP (imprescindible)
 
-- Login propio con sesiones y un administrador inicial.
-- Esquema multiusuario (`users`, `sessions`) y roles `admin`/`editor`; en el MVP solo se usa `admin`.
+- Login propio con sesiones y auto-registro con aprobación del administrador.
+- Esquema multiusuario (`users`, `sessions`, `blog_permissions`) y roles `admin`/`editor` con permisos por blog `read`/`write`.
+- Gestión de usuarios desde el panel y perfil propio con cambio de contraseña.
 - CRUD de blogs: nombre, slug, descripción, URL de la página, orígenes CORS y activo/inactivo.
 - Borrado de blog bloqueado si tiene artículos (`409 BLOG_HAS_ARTICLES`).
 - CRUD de artículos por blog: título, slug, descripción corta, autor, fechas, estado y contenido rich text.
@@ -45,8 +46,6 @@
 
 ### Post-MVP (deseable)
 
-- UI de gestión de usuarios (crear, desactivar, cambiar rol, resetear contraseña).
-- Asignación de blogs por usuario/editor.
 - API keys por blog para builds/SSR.
 - Publicación programada (`published_at` futuro).
 - Búsqueda full-text (FTS5).
@@ -76,6 +75,7 @@
 | 9 | Editor rich text, `body_json` y migración de contenido | 2–3 días |
 | 10 | Imagen de portada y miniatura en el listado | 0,5–1 día |
 | 11 | Vídeos WebM con conversión en navegador | 1–2 días |
+| 12 | Usuarios, aprobación, permisos por blog y perfil | 2–3 días |
 
 **Total orientativo:** 11–17 días de trabajo efectivo. El MVP funcional (fases 0–6) se puede tener en 10–14 días; la diferencia depende sobre todo del editor y de las pruebas de auth/CORS.
 
@@ -617,12 +617,51 @@ Permitir insertar vídeos en el contenido con el mismo flujo que las imágenes: 
 
 ---
 
-## 17. Definition of Done (MVP)
+## 17. Fase 12 — Usuarios, aprobación y permisos
+
+### Objetivo
+
+Permitir que cualquier persona solicite una cuenta, que un administrador la apruebe asignándole acceso a uno o más blogs y que cada usuario gestione su propio perfil.
+
+### Decisiones
+
+- `users.is_approved` booleano con `false` por defecto; la migración marca como aprobados a los usuarios existentes.
+- Tabla `blog_permissions` con PK compuesta `(user_id, blog_id)` y permiso `read`/`write`.
+- Los administradores tienen acceso completo y no necesitan filas de permisos; los editores solo ven los blogs asignados.
+- `read` permite listar y ver blogs y artículos; `write` permite crear, editar y borrar artículos y subir media.
+- `stats`, usuarios y ajustes de blog quedan restringidos a administradores.
+- Sesiones exigen `is_active` e `is_approved`; retirar la aprobación invalida sesiones activas.
+- El cambio de contraseña exige la actual y conserva la sesión actual.
+
+### Tareas
+
+- [x] Migración `0004_user_approval_permissions`.
+- [x] Registro público en `/register` con rate limit por IP.
+- [x] Login rechaza no aprobados con «Usuario pendiente de aprobación».
+- [x] CRUD de usuarios, aprobación y permisos por blog desde `/users` (solo admin).
+- [x] Enforcement de permisos en blogs, artículos, media y ajustes.
+- [x] Pantalla `/profile` con nombre y cambio de contraseña.
+- [x] UI de solo lectura para blogs con permiso `read`.
+- [x] Navegación por rol y redirección de editores de `/` a `/blogs`.
+- [x] Helpers de test y 6 tests nuevos de registro, aprobación, permisos y perfil.
+- [x] Documentación actualizada.
+
+### Criterios de aceptación
+
+- Un usuario recién registrado no puede iniciar sesión y recibe el mensaje exacto «Usuario pendiente de aprobación».
+- No se puede aprobar a un editor sin al menos un permiso de blog.
+- Los permisos se pueden cambiar después y se aplican de inmediato.
+- Un editor solo ve sus blogs; con `read` no puede crear ni editar artículos.
+- Todos los roles pueden cambiar su nombre y contraseña; la contraseña exige la actual.
+- `typecheck`, `lint`, `test`, `build`, `format:check` y `audit` pasan.
+
+---
+
+## 18. Definition of Done (MVP)
 
 El MVP se considera terminado cuando:
 
 - [ ] Se puede iniciar sesión como administrador y cerrar sesión.
-- [ ] El esquema soporta múltiples usuarios y roles, aunque solo se use un admin.
 - [ ] Se pueden crear, editar, activar/desactivar y borrar blogs.
 - [ ] Un blog con artículos no se puede borrar; la UI lo explica.
 - [ ] Se pueden crear, editar, publicar, ocultar, destacar y borrar artículos.
@@ -637,7 +676,7 @@ El MVP se considera terminado cuando:
 
 ---
 
-## 18. Orden de trabajo recomendado
+## 19. Orden de trabajo recomendado
 
 1. **Fase 0:** esqueleto desplegable con `/api/health` y bootstrap.
 2. **Fase 1:** esquema, repositorios, hashing y CLI de admin, con tests.
@@ -648,6 +687,7 @@ El MVP se considera terminado cuando:
 7. **Fase 9:** editor rich text, migración de contenido y nuevo contrato de la API.
 8. **Fase 10:** imagen de portada y miniatura en el listado.
 9. **Fase 11:** vídeos WebM con conversión en el navegador.
+10. **Fase 12:** auto-registro, aprobación, permisos por blog y perfil.
 
 La razón del orden: el modelo de datos y la API son la fuente de verdad; la UI se construye sobre contratos probados. El aislamiento, el bloqueo de borrado y CORS se validan antes de que exista interfaz, para no arrastrar fallos de diseño.
 
@@ -655,7 +695,7 @@ La razón del orden: el modelo de datos y la API son la fuente de verdad; la UI 
 
 ---
 
-## 19. Primeros comandos propuestos
+## 20. Primeros comandos propuestos
 
 El repositorio ya contiene `docs/`, así que el scaffold se hace en una carpeta temporal y se integra, o se inicializa manualmente:
 

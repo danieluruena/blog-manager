@@ -6,6 +6,7 @@ import {
   createTestArticle,
   createTestBlog,
   createTestUser,
+  grantBlogPermission,
   jsonRequest,
   loginAs,
   richTextJson,
@@ -160,8 +161,9 @@ describe("admin API", () => {
   })
 
   it("impide que un editor cree blogs pero le permite crear artículos", async () => {
-    const { editorCookie } = await setupAdmin()
+    const { editor, editorCookie } = await setupAdmin()
     const blog = await createTestBlog({ name: "Blog del editor" })
+    await grantBlogPermission(editor.id, blog.id, "write")
 
     const createBlog = await apiFetch(
       jsonRequest("/api/admin/blogs", {

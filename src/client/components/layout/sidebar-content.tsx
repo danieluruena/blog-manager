@@ -1,5 +1,5 @@
 import type { BlogDto, UserDto } from "@shared/types"
-import { LayoutDashboard, Library, LogOut } from "lucide-react"
+import { LayoutDashboard, Library, LogOut, Users } from "lucide-react"
 import { Link, NavLink, useLocation } from "react-router"
 
 import { initials } from "../../lib/format"
@@ -17,10 +17,13 @@ type SidebarContentProps = {
   onNavigate?: () => void
 }
 
-const navigation = [
+const adminNavigation = [
   { label: "Panel", to: "/", icon: LayoutDashboard, end: true },
   { label: "Blogs", to: "/blogs", icon: Library, end: false },
+  { label: "Usuarios", to: "/users", icon: Users, end: false },
 ]
+
+const editorNavigation = [{ label: "Blogs", to: "/blogs", icon: Library, end: false }]
 
 export function SidebarContent({
   user,
@@ -30,6 +33,7 @@ export function SidebarContent({
   onNavigate,
 }: SidebarContentProps) {
   const location = useLocation()
+  const navigation = user.role === "admin" ? adminNavigation : editorNavigation
 
   return (
     <div className="flex h-full flex-col px-4 py-5">
@@ -87,14 +91,20 @@ export function SidebarContent({
           </div>
         ) : blogs.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line px-3 py-4 text-xs leading-5 text-muted-foreground">
-            Todavía no hay blogs.
-            <Link
-              to="/blogs"
-              onClick={onNavigate}
-              className="mt-2 block text-brand hover:underline"
-            >
-              Crear el primero
-            </Link>
+            {user.role === "admin" ? (
+              <>
+                Todavía no hay blogs.
+                <Link
+                  to="/blogs"
+                  onClick={onNavigate}
+                  className="mt-2 block text-brand hover:underline"
+                >
+                  Crear el primero
+                </Link>
+              </>
+            ) : (
+              "No tienes blogs asignados. Un administrador debe darte acceso."
+            )}
           </div>
         ) : (
           <div className="space-y-1">

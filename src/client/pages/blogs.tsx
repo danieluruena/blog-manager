@@ -41,15 +41,19 @@ import {
 } from "../components/ui/select"
 import { Skeleton } from "../components/ui/skeleton"
 import { Switch } from "../components/ui/switch"
+import { useAuth } from "../hooks/use-auth"
 import { useBlogs } from "../hooks/use-blogs"
 import { api } from "../lib/api"
 import { formatDate } from "../lib/format"
+import { Badge } from "../components/ui/badge"
 
 type ActiveFilter = "all" | "active" | "inactive"
 
 export function BlogsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const auth = useAuth()
+  const isAdmin = auth.data?.role === "admin"
   const [search, setSearch] = useState("")
   const deferredSearch = useDeferredValue(search)
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all")
@@ -94,10 +98,12 @@ export function BlogsPage() {
         title="Tus blogs"
         description="Cada blog pertenece a una página web y mantiene sus propios artículos."
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Nuevo blog
-          </Button>
+          isAdmin ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" />
+              Nuevo blog
+            </Button>
+          ) : undefined
         }
       />
 
@@ -170,42 +176,60 @@ export function BlogsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <CardTitle className="truncate text-base text-ink">{blog.name}</CardTitle>
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                      /{blog.slug}
-                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        /{blog.slug}
+                      </p>
+                      {!isAdmin ? (
+                        <Badge
+                          variant="outline"
+                          className={
+                            blog.permission === "write"
+                              ? "border-success/30 bg-success/10 text-success"
+                              : "border-line bg-surface-2 text-muted-foreground"
+                          }
+                        >
+                          {blog.permission === "write" ? "Edición" : "Consulta"}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label="Acciones del blog">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onSelect={() => setEditingBlog(blog)}>
-                        <Pencil className="size-4" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => navigate(`/blogs/${blog.id}/settings`)}>
-                        <Settings className="size-4" />
-                        Ajustes
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => window.open(blog.siteUrl, "_blank", "noopener,noreferrer")}
-                      >
-                        <ExternalLink className="size-4" />
-                        Abrir sitio
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-danger focus:text-danger"
-                        onSelect={() => setDeletingBlog(blog)}
-                      >
-                        <Trash2 className="size-4" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {isAdmin ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm" aria-label="Acciones del blog">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onSelect={() => setEditingBlog(blog)}>
+                          <Pencil className="size-4" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => navigate(`/blogs/${blog.id}/settings`)}>
+                          <Settings className="size-4" />
+                          Ajustes
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            window.open(blog.siteUrl, "_blank", "noopener,noreferrer")
+                          }
+                        >
+                          <ExternalLink className="size-4" />
+                          Abrir sitio
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-danger focus:text-danger"
+                          onSelect={() => setDeletingBlog(blog)}
+                        >
+                          <Trash2 className="size-4" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : null}
                 </div>
                 <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
                   {blog.description || "Sin descripción."}
@@ -236,17 +260,19 @@ export function BlogsPage() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Switch
-                        checked={blog.isActive}
-                        onCheckedChange={(checked) =>
-                          toggle.mutate({ id: blog.id, isActive: checked })
-                        }
-                        disabled={toggle.isPending && toggle.variables?.id === blog.id}
-                        aria-label={blog.isActive ? "Desactivar blog" : "Activar blog"}
-                      />
-                      {blog.isActive ? "Activo" : "Inactivo"}
-                    </div>
+                    {isAdmin ? (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Switch
+                          checked={blog.isActive}
+                          onCheckedChange={(checked) =>
+                            toggle.mutate({ id: blog.id, isActive: checked })
+                          }
+                          disabled={toggle.isPending && toggle.variables?.id === blog.id}
+                          aria-label={blog.isActive ? "Desactivar blog" : "Activar blog"}
+                        />
+                        {blog.isActive ? "Activo" : "Inactivo"}
+                      </div>
+                    ) : null}
 
                     <Button variant="ghost" size="sm" asChild>
                       <Link to={`/blogs/${blog.id}/articles`}>
@@ -263,23 +289,31 @@ export function BlogsPage() {
       ) : (
         <EmptyState
           icon={Library}
-          title={hasFilters ? "No hay blogs que coincidan" : "Todavía no hay blogs"}
+          title={
+            hasFilters
+              ? "No hay blogs que coincidan"
+              : isAdmin
+                ? "Todavía no hay blogs"
+                : "No tienes blogs asignados"
+          }
           description={
             hasFilters
               ? "Prueba con otra búsqueda o cambia el filtro de estado."
-              : "Crea el primer blog y asígnalo a una de tus páginas web."
+              : isAdmin
+                ? "Crea el primer blog y asígnalo a una de tus páginas web."
+                : "Un administrador debe asignarte acceso de consulta o edición a uno o más blogs."
           }
           action={
             hasFilters ? (
               <Button variant="outline" onClick={clearFilters}>
                 Limpiar filtros
               </Button>
-            ) : (
+            ) : isAdmin ? (
               <Button onClick={() => setCreateOpen(true)}>
                 <Plus className="size-4" />
                 Crear primer blog
               </Button>
-            )
+            ) : undefined
           }
         />
       )}
