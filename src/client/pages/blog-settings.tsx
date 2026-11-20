@@ -1,6 +1,6 @@
 import { ExternalLink, FileText, Settings, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { Link, useNavigate, useParams } from "react-router"
+import { Link, Navigate, useNavigate, useParams } from "react-router"
 
 import { DeleteBlogDialog } from "../components/blogs/delete-blog-dialog"
 import { BlogForm } from "../components/blogs/blog-form"
@@ -9,14 +9,24 @@ import { PageHeader } from "../components/layout/page-header"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Skeleton } from "../components/ui/skeleton"
+import { useAuth } from "../hooks/use-auth"
 import { useBlog } from "../hooks/use-blogs"
 
 export function BlogSettingsPage() {
   const params = useParams()
   const blogId = params.blogId ?? ""
   const blog = useBlog(blogId)
+  const auth = useAuth()
   const navigate = useNavigate()
   const [deleteOpen, setDeleteOpen] = useState(false)
+
+  if (!auth.data) {
+    return null
+  }
+
+  if (auth.data.role !== "admin") {
+    return <Navigate to="/" replace />
+  }
 
   if (blog.isLoading) {
     return (

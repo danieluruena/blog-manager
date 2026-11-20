@@ -50,11 +50,43 @@ Los errores tienen esta forma:
 }
 ```
 
-Códigos principales: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `SLUG_DUPLICADO`, `BLOG_HAS_ARTICLES`, `RATE_LIMITED`, `INVALID_CREDENTIALS`, `INVALID_CURSOR`, `INTERNAL`.
+Códigos principales: `VALIDATION_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `SLUG_DUPLICADO`, `BLOG_HAS_ARTICLES`, `EMAIL_IN_USE`, `RATE_LIMITED`, `INVALID_CREDENTIALS`, `USER_PENDING_APPROVAL`, `APPROVAL_REQUIRES_PERMISSION`, `CANNOT_DELETE_SELF`, `CANNOT_DEACTIVATE_SELF`, `CANNOT_DEMOTE_SELF`, `LAST_ADMIN`, `INVALID_CURSOR`, `INTERNAL`.
 
 ---
 
 ## Autenticación
+
+### `POST /api/auth/register`
+
+Registro público. Crea una cuenta con rol `editor` en estado **no aprobado**.
+
+```json
+{
+  "name": "Nuevo Usuario",
+  "email": "nuevo@example.com",
+  "password": "una-contraseña-larga"
+}
+```
+
+Respuesta `201`:
+
+```json
+{
+  "data": {
+    "user": {
+      "id": "uuid",
+      "email": "nuevo@example.com",
+      "name": "Nuevo Usuario",
+      "role": "editor",
+      "isActive": true,
+      "isApproved": false
+    },
+    "message": "Cuenta creada. Un administrador debe aprobarla antes de iniciar sesión."
+  }
+}
+```
+
+La cuenta no puede iniciar sesión hasta que un administrador la apruebe y le asigne al menos un permiso de blog. El registro está limitado por IP: 5 intentos por 15 minutos; al superarlo responde `429 RATE_LIMITED`.
 
 ### `POST /api/auth/login`
 
@@ -74,12 +106,16 @@ Respuesta `200`:
       "id": "uuid",
       "email": "admin@example.com",
       "name": "Admin",
-      "role": "admin"
+      "role": "admin",
+      "isActive": true,
+      "isApproved": true
     },
     "expiresAt": "2026-11-25T10:00:00.000Z"
   }
 }
 ```
+
+Si la cuenta existe y la contraseña es correcta pero todavía no está aprobada, responde `403 USER_PENDING_APPROVAL` con el mensaje exacto **`Usuario pendiente de aprobación`**. Una cuenta desactivada o una sesión de un usuario no aprobado se rechazan como `401 UNAUTHORIZED`.
 
 La sesión se guarda en una cookie `bm_session`:
 
@@ -98,6 +134,16 @@ Requiere cookie. Devuelve el usuario actual.
 
 Cierra la sesión actual y borra la cookie. Responde `204`.
 
+### `PATCH /api/auth/profile`
+
+```json
+{
+  "name": "Nombre Nuevo"
+}
+```
+
+Requiere cookie. Actualiza el nombre del usuario autenticado y devuelve el usuario actualizado. El email es inmutable: enviarlo responde `400 VALIDATION_ERROR`.
+
 ### `PATCH /api/auth/password`
 
 ```json
@@ -107,7 +153,7 @@ Cierra la sesión actual y borra la cookie. Responde `204`.
 }
 ```
 
-Cambia la contraseña, revoca todas las sesiones del usuario y borra la cookie. Responde `204`.
+Cambia la contraseña. Exige la contraseña actual (`401 INVALID_CREDENTIALS` si no coincide), conserva la sesión desde la que se hace el cambio y revoca las demás sesiones del usuario. Responde `204`.
 
 ### Ejemplo con curl
 
@@ -126,18 +172,63 @@ curl -b cookies.txt http://localhost:5173/api/auth/me
 
 Todas las rutas de administración requieren cookie de sesión. Los roles son:
 
-- `admin`: todo, incluida la gestión de blogs.
-- `editor`: puede gestionar artículos de cualquier blog, pero no crear, editar ni borrar blogs.
+- `admin`: acceso completo a todos los blogs, estadísticas y gestión de usuarios.
+- `editor`: solo ve los blogs que tenga asignados y actúa según su permiso:
+  - `read` (**consulta**): puede listar y ver blogs y artículos, incluida la lectura del artículo.
+  - `write` (**edición**): además puede crear, editar y borrar artículos y subir media.
+
+`GET /api/admin/stats` y todas las rutas de `/api/admin/users` son exclusivas de `admin`. Acceder a un blog sin permiso responde `403 FORBIDDEN`.
+
+Cada `BlogDto` incluye `permission` (`read` o `write`). Para un administrador siempre es `write`.
+
+### Usuarios
+
+Solo `admin`.
+
+| Método   | Ruta                      | Descripción                                        |
+| -------- | ------------------------- | -------------------------------------------------- |
+| `GET`    | `/api/admin/users`        | Lista usuarios con sus permisos por blog           |
+| `POST`   | `/api/admin/users`        | Crea un usuario                                    |
+| `PATCH`  | `/api/admin/users/:id`    | Actualiza rol, estado, aprobación y permisos        |
+| `DELETE` | `/api/admin/users/:id`    | Elimina el usuario y sus sesiones/permisos         |
+
+Crear usuario:
+
+```json
+{
+  "name": "Editor Nuevo",
+  "email": "editor@example.com",
+  "password": "una-contraseña-larga",
+  "role": "editor",
+  "isActive": true,
+  "isApproved": false,
+  "permissions": [{ "blogId": "uuid", "permission": "read" }]
+}
+```
+
+Reglas:
+
+- El **email es inmutable** y **único**. Solo se indica al crear la cuenta; no se puede cambiar desde la API, ni por el propio usuario.
+- El **nombre** solo lo puede cambiar el propio usuario desde `PATCH /api/auth/profile`. Un administrador no puede editar el nombre de otros usuarios.
+- Un usuario aprobado con rol `editor` debe tener **al menos un permiso**; si no, responde `400 APPROVAL_REQUIRES_PERMISSION`.
+- Los `admin` se aprueban automáticamente y no necesitan permisos.
+- Los permisos se reemplazan completos con el array `permissions` (hasta 100 blogs); `read` o `write`.
+- `email` duplicado responde `409 EMAIL_IN_USE`.
+- Un administrador no puede eliminarse (`400 CANNOT_DELETE_SELF`), desactivarse (`400 CANNOT_DEACTIVATE_SELF`) ni quitarse el rol (`400 CANNOT_DEMOTE_SELF`).
+- Siempre debe quedar al menos un administrador activo (`409 LAST_ADMIN`).
+- Retirar la aprobación o desactivar la cuenta invalida sus sesiones activas.
 
 ### Blogs
 
-| Método   | Ruta                       | Rol         | Descripción                             |
-| -------- | -------------------------- | ----------- | --------------------------------------- |
-| `GET`    | `/api/admin/blogs`         | autenticado | Lista con búsqueda, filtro y paginación |
-| `POST`   | `/api/admin/blogs`         | admin       | Crea un blog                            |
-| `GET`    | `/api/admin/blogs/:blogId` | autenticado | Detalle + `articleCount`                |
-| `PATCH`  | `/api/admin/blogs/:blogId` | admin       | Actualiza campos parciales              |
-| `DELETE` | `/api/admin/blogs/:blogId` | admin       | Elimina solo si no tiene artículos      |
+| Método   | Ruta                       | Rol                          | Descripción                             |
+| -------- | -------------------------- | ---------------------------- | --------------------------------------- |
+| `GET`    | `/api/admin/blogs`         | autenticado (con permiso)    | Lista con búsqueda, filtro y paginación |
+| `POST`   | `/api/admin/blogs`         | admin                        | Crea un blog                            |
+| `GET`    | `/api/admin/blogs/:blogId` | autenticado (con permiso)    | Detalle + `articleCount` + `permission` |
+| `PATCH`  | `/api/admin/blogs/:blogId` | admin                        | Actualiza campos parciales              |
+| `DELETE` | `/api/admin/blogs/:blogId` | admin                        | Elimina solo si no tiene artículos      |
+
+Un `editor` solo recibe en la lista los blogs a los que tiene acceso (`read` o `write`).
 
 Query params de `GET /api/admin/blogs`:
 
@@ -181,7 +272,7 @@ Borrado bloqueado:
 
 ### Artículos
 
-Todos los artículos están anidados bajo un blog:
+Todos los artículos están anidados bajo un blog. Listar y leer requiere permiso `read`; crear, editar y borrar requiere `write`.
 
 | Método   | Ruta                                           | Descripción                    |
 | -------- | ---------------------------------------------- | ------------------------------ |
@@ -257,7 +348,7 @@ Reglas:
 
 | Método   | Ruta                                          | Descripción                        |
 | -------- | --------------------------------------------- | ---------------------------------- |
-| `POST`   | `/api/admin/blogs/:blogId/media`              | Sube un archivo (`multipart/form-data`, campo `file`) |
+| `POST`   | `/api/admin/blogs/:blogId/media`              | Sube un archivo (`multipart/form-data`, campo `file`); requiere `write` |
 | `DELETE` | `/api/admin/blogs/:blogId/media/:mediaId`     | Elimina el archivo de D1 y R2 (solo admin) |
 | `GET`    | `/media/:blogId/:filename`                    | Sirve el archivo con caché inmutable y soporte de rangos |
 
@@ -291,7 +382,7 @@ Cada subida genera un objeto y una fila propios. Al guardar el artículo, las im
 
 ### Estadísticas
 
-`GET /api/admin/stats`
+`GET /api/admin/stats` (solo `admin`)
 
 ```json
 {

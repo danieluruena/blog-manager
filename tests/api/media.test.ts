@@ -7,6 +7,7 @@ import {
   clearDatabase,
   createTestBlog,
   createTestUser,
+  grantBlogPermission,
   jsonRequest,
   loginAs,
 } from "./helpers"
@@ -58,6 +59,7 @@ async function setup() {
   const adminCookie = (await loginAs(admin)).cookie
   const editorCookie = (await loginAs(editor)).cookie
   const blog = await createTestBlog()
+  await grantBlogPermission(editor.id, blog.id, "write")
 
   return { blog, adminCookie, editorCookie }
 }

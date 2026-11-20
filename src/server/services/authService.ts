@@ -78,6 +78,10 @@ export async function login(
     throw new ApiError(401, "INVALID_CREDENTIALS", "Credenciales inválidas")
   }
 
+  if (!user.isApproved) {
+    throw new ApiError(403, "USER_PENDING_APPROVAL", "Usuario pendiente de aprobación")
+  }
+
   await clearFailedAttempts(db, keys)
   await deleteExpiredSessions(db, nowIso())
 
@@ -113,6 +117,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
   pepper: string,
+  keepSessionId?: string,
 ): Promise<void> {
   assertPepper(pepper)
 
@@ -134,5 +139,5 @@ export async function changePassword(
     passwordHash,
     updatedAt: nowIso(),
   })
-  await deleteSessionsByUserId(db, userId)
+  await deleteSessionsByUserId(db, userId, keepSessionId)
 }

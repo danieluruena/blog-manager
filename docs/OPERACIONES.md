@@ -113,6 +113,28 @@ No requiere conversión: las portadas se suben desde el formulario y se asocian
 al artículo al guardar. Al reemplazar o quitar una portada, su objeto de R2 y su
 fila de `media` se eliminan.
 
+### Migración 0004 — aprobación y permisos
+
+`0004_user_approval_permissions.sql`:
+
+- Añade `users.is_approved` (por defecto `0`).
+- Crea `blog_permissions` (`user_id`, `blog_id`, `permission`, `created_at`) con
+  PK `(user_id, blog_id)` y FK en cascada a `users` y `blogs`.
+- Marca como aprobados a los usuarios existentes (`is_approved = 1`), de modo que
+  nadie pierde el acceso tras el despliegue.
+
+Los usuarios creados con `npm run user:create` ya insertan `is_approved = 1`. Los
+registros públicos crean la cuenta con `is_approved = 0` y rol `editor`; un
+administrador debe asignarle al menos un permiso de blog para aprobarla.
+
+Tras aplicar la migración en producción:
+
+1. Entra con el administrador existente.
+2. Comprueba `/users` y que los usuarios previos aparecen como aprobados.
+3. Si un editor existente debe seguir trabajando, asígnale permisos en sus blogs
+   (los administradores no los necesitan).
+4. Verifica que `/blogs` y `/` siguen funcionando con el administrador.
+
 ## Copias de seguridad
 
 ### D1
@@ -151,21 +173,26 @@ También puedes descargar objetos concretos con `npx wrangler r2 object get`.
 El dump desactiva/defiere claves foráneas y crea las tablas en un orden que no
 respeta dependencias, así que al restaurar con SQLite directamente hay que abrir
 la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
-(`node:sqlite`): 2 usuarios, 3 blogs, 8 artículos, 2 medios y 4 migraciones.
+(`node:sqlite`): 2 usuarios, 3 blogs, 8 artículos, 2 medios y 4 migraciones. Con la
+migración `0004` el dump incluye además `blog_permissions` y `users.is_approved`.
 
 ## Recuperación de acceso
 
 - **Nuevo administrador:** `npm run user:create -- --remote --email ...` con un
-  email distinto (el comando no actualiza usuarios existentes).
+  email distinto (el comando no actualiza usuarios existentes). Queda aprobado.
+- **Aprobar una cuenta registrada:** entra en `/users`, abre el usuario, asigna al
+  menos un permiso de blog y activa «Aprobada».
 - **Revocar sesiones de un usuario:**
 
   ```sql
   DELETE FROM sessions WHERE user_id = '<id>';
   ```
 
+  Retirar la aprobación (`is_approved = 0`) o desactivar la cuenta
+  (`is_active = 0`) invalida también sus sesiones en la siguiente petición.
 - **Resetear la contraseña de un email existente:** elimina el usuario y vuelve
   a crearlo. No hay artículos que referencien `users.id`, así que es seguro;
-  las sesiones se borran en cascada.
+  las sesiones y permisos se borran en cascada.
 
 - **Bloqueo por intentos fallidos:** espera 15 minutos o elimina su fila de
   `auth_attempts`. Las claves son hashes de IP/email.
@@ -192,7 +219,12 @@ la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
 - [x] Contraseñas con HMAC-SHA256 + salt + `AUTH_PEPPER` (compatible con CPU gratuita).
 - [x] Rate limit de login: 5 intentos / 15 minutos por IP y email.
 - [x] Errores de login genéricos y verificación de hash también para usuarios inexistentes.
-- [x] Revocación de sesiones al cambiar contraseña y al cerrar sesión.
+- [x] Revocación de sesiones al cambiar contraseña y al cerrar sesión; el cambio conserva la sesión actual.
+- [x] Registro público limitado por IP; las cuentas quedan pendientes de aprobación.
+- [x] Email único e inmutable; el nombre solo lo cambia el propio usuario desde su perfil.
+- [x] Aprobación por administrador con al menos un permiso de blog; los no aprobados reciben «Usuario pendiente de aprobación».
+- [x] Permisos por blog (`read`/`write`) comprobados en cada ruta de blogs, artículos y media.
+- [x] `stats`, usuarios y ajustes de blog restringidos a administradores; no se puede eliminar/desactivar al último administrador.
 - [x] CSRF: `SameSite=Strict` + validación de `Origin` en mutaciones.
 - [x] CORS por blog con lista de orígenes, `Vary: Origin`, sin credenciales.
 - [x] Rutas de administración protegidas con `requireAuth`; acciones destructivas con `requireAdmin`.
@@ -221,6 +253,8 @@ la conexión con `PRAGMA foreign_keys = OFF`. Prueba local realizada con Node 22
 | ------------------------------- | ---------------------------------------------------------------------- |
 | 5xx repetidos                   | Buscar `requestId` en `wrangler tail`; rollback si empezó tras deploy. |
 | Login bloqueado                 | Esperar 15 min o limpiar `auth_attempts` del usuario.                  |
+| «Usuario pendiente de aprobación» | Aprobar la cuenta en `/users` y asignarle al menos un permiso.        |
+| Editor sin blogs visibles       | Revisar sus permisos en `/users`; un editor solo ve los asignados.     |
 | Sesión comprometida             | Borrar sesiones del usuario y cambiar la contraseña.                   |
 | `AUTH_PEPPER` comprometido      | Rotarlo invalida todos los hashes: crear administradores nuevos.       |
 | Imágenes no cargan              | Comprobar `GET /media/<blogId>/<archivo>` y el binding `MEDIA`.        |

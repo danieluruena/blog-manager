@@ -26,6 +26,7 @@ import { DeleteArticleDialog } from "../components/articles/delete-article-dialo
 import { EmptyState } from "../components/layout/empty-state"
 import { PageHeader } from "../components/layout/page-header"
 import { Button } from "../components/ui/button"
+import { Badge } from "../components/ui/badge"
 import { Card, CardContent } from "../components/ui/card"
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table"
+import { useAuth } from "../hooks/use-auth"
 import { useArticles } from "../hooks/use-articles"
 import { useBlog } from "../hooks/use-blogs"
 import { api } from "../lib/api"
@@ -116,6 +118,7 @@ export function BlogArticlesPage() {
   const blogId = params.blogId ?? ""
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const auth = useAuth()
   const blog = useBlog(blogId)
 
   const [search, setSearch] = useState("")
@@ -222,6 +225,8 @@ export function BlogArticlesPage() {
   }
 
   const currentBlog = blog.data.data
+  const canEdit = currentBlog.permission === "write"
+  const isAdmin = auth.data?.role === "admin"
   const total = articles.data?.meta.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const firstItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
@@ -236,18 +241,26 @@ export function BlogArticlesPage() {
         description={currentBlog.description || "Sin descripción."}
         actions={
           <>
-            <Button variant="outline" asChild>
-              <Link to={`/blogs/${currentBlog.id}/settings`}>
-                <Settings className="size-4" />
-                Ajustes
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link to={`/blogs/${currentBlog.id}/articles/new`}>
-                <Plus className="size-4" />
-                Nuevo artículo
-              </Link>
-            </Button>
+            {isAdmin ? (
+              <Button variant="outline" asChild>
+                <Link to={`/blogs/${currentBlog.id}/settings`}>
+                  <Settings className="size-4" />
+                  Ajustes
+                </Link>
+              </Button>
+            ) : null}
+            {canEdit ? (
+              <Button asChild>
+                <Link to={`/blogs/${currentBlog.id}/articles/new`}>
+                  <Plus className="size-4" />
+                  Nuevo artículo
+                </Link>
+              </Button>
+            ) : (
+              <Badge variant="outline" className="border-line bg-surface-2 text-muted-foreground">
+                Solo lectura
+              </Badge>
+            )}
           </>
         }
       />
@@ -399,13 +412,15 @@ export function BlogArticlesPage() {
                         </div>
                       </div>
                     </Link>
-                    <ArticleActions
-                      article={article}
-                      pending={pending}
-                      onEdit={() => navigate(`/blogs/${currentBlog.id}/articles/${article.id}`)}
-                      onToggle={() => toggleArticleStatus(article)}
-                      onDelete={() => setDeletingArticle(article)}
-                    />
+                    {canEdit ? (
+                      <ArticleActions
+                        article={article}
+                        pending={pending}
+                        onEdit={() => navigate(`/blogs/${currentBlog.id}/articles/${article.id}`)}
+                        onToggle={() => toggleArticleStatus(article)}
+                        onDelete={() => setDeletingArticle(article)}
+                      />
+                    ) : null}
                   </CardContent>
                 </Card>
               )
@@ -423,7 +438,7 @@ export function BlogArticlesPage() {
                       <TableHead className="hidden md:table-cell">Autor</TableHead>
                       <TableHead className="hidden lg:table-cell">Publicado</TableHead>
                       <TableHead className="hidden xl:table-cell">Actualizado</TableHead>
-                      <TableHead className="pr-5 text-right">Acciones</TableHead>
+                      {canEdit ? <TableHead className="pr-5 text-right">Acciones</TableHead> : null}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -474,17 +489,19 @@ export function BlogArticlesPage() {
                           <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground xl:table-cell">
                             {formatDateTime(article.updatedAt)}
                           </TableCell>
-                          <TableCell className="pr-5 text-right">
-                            <ArticleActions
-                              article={article}
-                              pending={pending}
-                              onEdit={() =>
-                                navigate(`/blogs/${currentBlog.id}/articles/${article.id}`)
-                              }
-                              onToggle={() => toggleArticleStatus(article)}
-                              onDelete={() => setDeletingArticle(article)}
-                            />
-                          </TableCell>
+                          {canEdit ? (
+                            <TableCell className="pr-5 text-right">
+                              <ArticleActions
+                                article={article}
+                                pending={pending}
+                                onEdit={() =>
+                                  navigate(`/blogs/${currentBlog.id}/articles/${article.id}`)
+                                }
+                                onToggle={() => toggleArticleStatus(article)}
+                                onDelete={() => setDeletingArticle(article)}
+                              />
+                            </TableCell>
+                          ) : null}
                         </TableRow>
                       )
                     })}
@@ -549,7 +566,7 @@ export function BlogArticlesPage() {
         />
       )}
 
-      {deletingArticle ? (
+      {deletingArticle && canEdit ? (
         <DeleteArticleDialog
           blogId={currentBlog.id}
           article={deletingArticle}

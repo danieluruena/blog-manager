@@ -173,13 +173,14 @@ async function main(): Promise<void> {
   const id = newId()
 
   const sql = `INSERT INTO users (
-  id, email, name, password_hash, role, is_active, created_at, updated_at
+  id, email, name, password_hash, role, is_active, is_approved, created_at, updated_at
 ) VALUES (
   ${sqlString(id)},
   ${sqlString(email)},
   ${sqlString(name)},
   ${sqlString(passwordHash)},
   ${sqlString(role)},
+  1,
   1,
   ${sqlString(timestamp)},
   ${sqlString(timestamp)}

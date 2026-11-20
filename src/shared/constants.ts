@@ -1,6 +1,12 @@
 export const userRoleValues = ["admin", "editor"] as const
 export type UserRole = (typeof userRoleValues)[number]
 
+export const blogPermissionValues = ["read", "write"] as const
+export type BlogPermission = (typeof blogPermissionValues)[number]
+
+export const userApprovalStatusValues = ["unapproved", "approved"] as const
+export type UserApprovalStatus = (typeof userApprovalStatusValues)[number]
+
 export const articleStatusValues = ["draft", "published", "hidden", "featured"] as const
 export type ArticleStatus = (typeof articleStatusValues)[number]
 

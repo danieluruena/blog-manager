@@ -1,4 +1,4 @@
-import { and, eq, gt, lt } from "drizzle-orm"
+import { and, eq, gt, lt, ne } from "drizzle-orm"
 
 import type { Database } from "../client"
 import { sessions, users, type NewSession, type Session, type User } from "../schema"
@@ -28,7 +28,12 @@ export async function findValidSessionByTokenHash(
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(
-      and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, now), eq(users.isActive, true)),
+      and(
+        eq(sessions.tokenHash, tokenHash),
+        gt(sessions.expiresAt, now),
+        eq(users.isActive, true),
+        eq(users.isApproved, true),
+      ),
     )
     .limit(1)
 
@@ -44,10 +49,18 @@ export async function deleteSessionByTokenHash(db: Database, tokenHash: string):
   return rows.length > 0
 }
 
-export async function deleteSessionsByUserId(db: Database, userId: string): Promise<number> {
+export async function deleteSessionsByUserId(
+  db: Database,
+  userId: string,
+  exceptSessionId?: string,
+): Promise<number> {
   const rows = await db
     .delete(sessions)
-    .where(eq(sessions.userId, userId))
+    .where(
+      exceptSessionId
+        ? and(eq(sessions.userId, userId), ne(sessions.id, exceptSessionId))
+        : eq(sessions.userId, userId),
+    )
     .returning({ id: sessions.id })
 
   return rows.length

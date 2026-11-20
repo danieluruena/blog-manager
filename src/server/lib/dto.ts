@@ -1,4 +1,5 @@
 import type {
+  AdminUserDto,
   ArticleDto,
   ArticleSummaryDto,
   BlogDto,
@@ -8,7 +9,9 @@ import type {
   PublicBlogDto,
   RecentArticleDto,
   UserDto,
+  UserPermissionDto,
 } from "@shared/types"
+import type { BlogPermission } from "@shared/constants"
 
 import type { Article, Blog, Media, User } from "../db/schema"
 import type { ArticleSummary } from "../db/repositories/articlesRepository"
@@ -23,10 +26,38 @@ export function toUserDto(user: User): UserDto {
     email: user.email,
     name: user.name,
     role: user.role,
+    isActive: user.isActive,
+    isApproved: user.isApproved,
   }
 }
 
-export function toBlogDto(blog: Blog | BlogListItem, articleCount?: number): BlogDto {
+export function toAdminUserDto(
+  user: User,
+  permissions: Array<{
+    blogId: string
+    blogName: string
+    blogSlug: string
+    permission: BlogPermission
+  }>,
+): AdminUserDto {
+  return {
+    ...toUserDto(user),
+    permissions: permissions.map((item): UserPermissionDto => ({
+      blogId: item.blogId,
+      blogName: item.blogName,
+      blogSlug: item.blogSlug,
+      permission: item.permission,
+    })),
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  }
+}
+
+export function toBlogDto(
+  blog: Blog | BlogListItem,
+  articleCount?: number,
+  permission: BlogPermission = "write",
+): BlogDto {
   const count = "articleCount" in blog ? blog.articleCount : articleCount
 
   return {
@@ -37,6 +68,7 @@ export function toBlogDto(blog: Blog | BlogListItem, articleCount?: number): Blo
     siteUrl: blog.siteUrl,
     allowedOrigins: parseOrigins(blog.allowedOrigins),
     isActive: blog.isActive,
+    permission,
     ...(count !== undefined ? { articleCount: count } : {}),
     createdAt: blog.createdAt,
     updatedAt: blog.updatedAt,
