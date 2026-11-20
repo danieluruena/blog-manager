@@ -17,6 +17,7 @@ Documentación:
 - [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
 - [`docs/PLAN_IMPLEMENTACION.md`](docs/PLAN_IMPLEMENTACION.md)
 - [`docs/API.md`](docs/API.md) — endpoints, auth, CORS y ejemplos.
+- [`docs/INTEGRACION.md`](docs/INTEGRACION.md) — manual para consumir la API pública desde las webs de cada blog.
 - [`docs/OPERACIONES.md`](docs/OPERACIONES.md) — deploy, backups, migraciones e incidentes.
 - [`docs/RENDIMIENTO.md`](docs/RENDIMIENTO.md) — bundle y planes de consulta.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — flujo GitFlow.
