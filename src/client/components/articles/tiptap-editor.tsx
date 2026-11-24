@@ -28,6 +28,11 @@ import {
   Video,
 } from "lucide-react"
 import { useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  getMaxEditorHeight,
+  MIN_EDITOR_HEIGHT,
+  useEditorHeight,
+} from "../../hooks/use-editor-height"
 
 import { countWords } from "../../lib/text"
 import {
@@ -146,6 +151,7 @@ export function TiptapEditor({
   const previewUrlsRef = useRef<Set<string>>(new Set())
   const textColorInputRef = useRef<HTMLInputElement>(null)
   const highlightInputRef = useRef<HTMLInputElement>(null)
+  const editorHeight = useEditorHeight()
   const [linkOpen, setLinkOpen] = useState(false)
   const [linkValue, setLinkValue] = useState("")
 
@@ -746,7 +752,24 @@ export function TiptapEditor({
           </ToolbarButton>
         </div>
 
-        <EditorContent editor={editor} />
+        <div className="overflow-y-auto" style={{ height: editorHeight.height }}>
+          <EditorContent editor={editor} />
+        </div>
+
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Ajustar altura del editor"
+          aria-valuemin={MIN_EDITOR_HEIGHT}
+          aria-valuemax={getMaxEditorHeight()}
+          aria-valuenow={editorHeight.height}
+          tabIndex={0}
+          title="Arrastra para ajustar la altura · doble clic para restablecer"
+          className="flex h-3 touch-none cursor-row-resize items-center justify-center border-t border-line bg-surface-2/60 hover:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+          {...editorHeight.handleProps}
+        >
+          <span className="h-1 w-10 rounded-full bg-line" />
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-xs text-muted-foreground">
           <span>
