@@ -752,7 +752,7 @@ export function TiptapEditor({
           </ToolbarButton>
         </div>
 
-        <div className="overflow-y-auto" style={{ height: editorHeight.height }}>
+        <div className="editor-scroll overflow-y-auto" style={{ height: editorHeight.height }}>
           <EditorContent editor={editor} />
         </div>
 
