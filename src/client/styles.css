@@ -99,6 +99,15 @@
   outline: none;
 }
 
+/* El editor editable llena el contenedor de altura ajustable con scroll. */
+.editor-scroll > div {
+  height: 100%;
+}
+
+.editor-scroll .tiptap {
+  min-height: 100%;
+}
+
 .tiptap > * + * {
   margin-top: 0.75rem;
 }
